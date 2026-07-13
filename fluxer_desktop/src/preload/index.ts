@@ -488,6 +488,7 @@ const api: ElectronAPI = {
 	switchInstanceUrl: (options: SwitchInstanceUrlOptions): Promise<void> =>
 		ipcRenderer.invoke('switch-instance-url', options),
 	consumeDesktopHandoffCode: (): Promise<string | null> => ipcRenderer.invoke('consume-desktop-handoff-code'),
+	consumeBrowserLoginInitiation: (): Promise<boolean> => ipcRenderer.invoke('consume-browser-login-initiation'),
 	toggleDevTools: (): void => {
 		ipcRenderer.send('toggle-devtools');
 	},
@@ -829,6 +830,22 @@ const api: ElectronAPI = {
 		},
 	} satisfies VoiceEngineV2BridgeApi,
 };
+
+let nativeVoiceEngineAvailable = false;
+try {
+	const nativeFileName = `webrtc-sender.${process.platform}-${process.arch}-gnu.node`;
+	const {existsSync} = require('node:fs');
+	const {join} = require('node:path');
+	const moduleRoot = join(__dirname, '..', '..', 'node_modules', '@fluxer', 'webrtc-sender');
+	const asarPath = join(moduleRoot, nativeFileName);
+	const unpackedPath = asarPath.replace('app.asar', 'app.asar.unpacked');
+	nativeVoiceEngineAvailable = existsSync(asarPath) || existsSync(unpackedPath);
+} catch {
+	nativeVoiceEngineAvailable = false;
+}
+if (!nativeVoiceEngineAvailable) {
+	delete (api as Partial<typeof api>).voiceEngine;
+}
 
 window.addEventListener(
 	'contextmenu',

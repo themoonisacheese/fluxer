@@ -6,6 +6,7 @@ mod assets_proxy;
 mod health;
 mod spa_index;
 mod spa_static;
+mod well_known;
 
 use crate::state::AppState;
 use axum::{
@@ -34,6 +35,10 @@ pub fn build_router(state: AppState) -> Router {
         .route(
             "/.well-known/assetlinks.json",
             get(android_association::assetlinks),
+        )
+        .route(
+            "/.well-known/fluxer",
+            get(well_known::fluxer_well_known),
         )
         .route(
             "/apple-app-site-association",

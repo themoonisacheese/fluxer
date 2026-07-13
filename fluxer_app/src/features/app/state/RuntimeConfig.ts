@@ -435,14 +435,38 @@ class RuntimeConfig {
 		const connectId = ++this._connectSeq;
 		const apiEndpoint = this.normalizeEndpoint(input);
 		const wellKnownUrl = this.buildWellKnownUrl(apiEndpoint);
-		const response = await http.get<InstanceDiscoveryResponse>(wellKnownUrl);
-		if (connectId !== this._connectSeq) {
-			return;
+		const fallbackUrl = this.buildFallbackWellKnownUrl(apiEndpoint);
+		let instance: InstanceDiscoveryResponse | null = null;
+		try {
+			const response = await http.get<InstanceDiscoveryResponse>(wellKnownUrl);
+			if (connectId !== this._connectSeq) return;
+			if (response.ok && isValidInstanceDiscoveryResponse(response.body)) {
+				instance = response.body;
+			} else if (fallbackUrl) {
+				const fallbackResponse = await http.get<InstanceDiscoveryResponse>(fallbackUrl);
+				if (connectId !== this._connectSeq) return;
+				if (fallbackResponse.ok && isValidInstanceDiscoveryResponse(fallbackResponse.body)) {
+					instance = fallbackResponse.body;
+				} else {
+					throw new Error(
+						`Failed to reach ${wellKnownUrl} (${response.status})${fallbackUrl ? ` and ${fallbackUrl} (${fallbackResponse.status})` : ''}`,
+					);
+				}
+			} else {
+				throw new Error(`Failed to reach ${wellKnownUrl} (${response.status})`);
+			}
+		} catch (rootError) {
+			if (instance || !fallbackUrl) throw rootError;
+			const fallbackResponse = await http.get<InstanceDiscoveryResponse>(fallbackUrl);
+			if (connectId !== this._connectSeq) return;
+			if (!fallbackResponse.ok || !isValidInstanceDiscoveryResponse(fallbackResponse.body)) {
+				throw new Error(`Failed to reach ${wellKnownUrl} and ${fallbackUrl} (${fallbackResponse.status})`);
+			}
+			instance = fallbackResponse.body;
 		}
-		if (!response.ok) {
-			throw new Error(`Failed to reach ${wellKnownUrl} (${response.status})`);
+		if (instance && connectId === this._connectSeq) {
+			this.updateFromInstance(instance);
 		}
-		this.updateFromInstance(response.body);
 	}
 
 	private buildWellKnownUrl(apiEndpoint: string): string {
@@ -453,6 +477,20 @@ class RuntimeConfig {
 			return url.toString();
 		} catch {
 			return `${apiEndpoint.replace(/\/api\/?$/, '')}/.well-known/fluxer`;
+		}
+	}
+
+	private buildFallbackWellKnownUrl(apiEndpoint: string): string | null {
+		try {
+			const url = new URL(apiEndpoint);
+			const isOfficialWebApp = url.hostname === 'web.fluxer.app' || url.hostname === 'web.canary.fluxer.app';
+			if (isOfficialWebApp) {
+				return null;
+			}
+			url.pathname = '/api/.well-known/fluxer';
+			return url.toString();
+		} catch {
+			return null;
 		}
 	}
 
@@ -695,6 +733,21 @@ export function describeApiEndpoint(endpoint: string): string {
 	} catch {
 		return endpoint;
 	}
+}
+
+function isValidInstanceDiscoveryResponse(body: unknown): body is InstanceDiscoveryResponse {
+	if (body === null || typeof body !== 'object') {
+		return false;
+	}
+	const record = body as Record<string, unknown>;
+	if (typeof record.api_code_version !== 'number') {
+		return false;
+	}
+	if (!record.endpoints || typeof record.endpoints !== 'object') {
+		return false;
+	}
+	const endpoints = record.endpoints as Record<string, unknown>;
+	return typeof endpoints.api === 'string' && typeof endpoints.gateway === 'string';
 }
 
 export default new RuntimeConfig();
