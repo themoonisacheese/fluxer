@@ -120,7 +120,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-          merge-multiple: true
+          pattern: desktop-*
+          merge-multiple: false
 
       - name: Create GitHub Release
         env:
@@ -134,7 +135,7 @@ jobs:
           if [ "$BUILD_CHANNEL" = "canary" ]; then
             PRERELEASE_FLAG="--prerelease"
           fi
-          find artifacts -type f -print0 | xargs -0 gh release create "$TAG" \
+          find artifacts -type f -not -name 'app.asar' -not -name '*.dat' -not -name '*.pak' -not -name '*.bin' -not -name 'icudtl.dat' -not -name 'resources.pak' -not -name 'v8_context_snapshot.bin' -not -name 'vk_swiftshader.dll' -not -name 'snapshot_blob.bin' -print0 | xargs -0 gh release create "$TAG" \
             --title "Fluxer Desktop ${BUILD_CHANNEL} $(date -u +%Y-%m-%d)" \
             --notes "Desktop client build for ${BUILD_CHANNEL} channel." \
             $PRERELEASE_FLAG
