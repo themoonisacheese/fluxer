@@ -684,6 +684,7 @@ async function verifyNativePackageInputs(context) {
 }
 
 async function verifyPackagedNativeArtifacts(context) {
+	if (process.env.FLUXER_SKIP_NATIVE === 'true') return;
 	const platform = context.electronPlatformName;
 	const arch = normalizeArch(context.arch);
 	const appDir = resolveAppDir(context);
@@ -719,6 +720,7 @@ async function verifyPackagedNativeArtifacts(context) {
 }
 
 async function copyMissingPackagedNativeArtifacts(context) {
+	if (process.env.FLUXER_SKIP_NATIVE === 'true') return;
 	const platform = context.electronPlatformName;
 	const arch = normalizeArch(context.arch);
 	const appDir = resolveAppDir(context);

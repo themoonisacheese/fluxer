@@ -78,6 +78,8 @@ import type {
 	PublicKeyCredentialRequestOptionsJSON,
 	RegistrationResponseJSON,
 } from '@simplewebauthn/browser';
+import {existsSync} from 'node:fs';
+import {join} from 'node:path';
 import {contextBridge, ipcRenderer, webFrame} from 'electron';
 
 const ACCESSIBILITY_STORE_STORAGE_KEY = 'AccessibilityStore';
@@ -830,6 +832,20 @@ const api: ElectronAPI = {
 		},
 	} satisfies VoiceEngineV2BridgeApi,
 };
+
+let nativeVoiceEngineAvailable = false;
+try {
+	const nativeFileName = `webrtc-sender.${process.platform}-${process.arch}-gnu.node`;
+	const moduleRoot = join(__dirname, '..', '..', 'node_modules', '@fluxer', 'webrtc-sender');
+	const asarPath = join(moduleRoot, nativeFileName);
+	const unpackedPath = asarPath.replace('app.asar', 'app.asar.unpacked');
+	nativeVoiceEngineAvailable = existsSync(asarPath) || existsSync(unpackedPath);
+} catch {
+	nativeVoiceEngineAvailable = false;
+}
+if (!nativeVoiceEngineAvailable) {
+	delete (api as Partial<typeof api>).voiceEngine;
+}
 
 window.addEventListener(
 	'contextmenu',

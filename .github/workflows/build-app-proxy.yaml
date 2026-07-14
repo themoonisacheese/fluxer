@@ -77,7 +77,7 @@ jobs:
   build:
     name: build app-proxy (amd64)
     needs: meta
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
@@ -125,11 +125,12 @@ jobs:
           if-no-files-found: error
 
       - name: upload assets to S3 static bucket
+        if: ${{ vars.FLUXER_S3_STATIC_UPLOAD == 'true' }}
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          S3_ENDPOINT: https://ewr1.vultrobjects.com
-          STATIC_BUCKET: fluxer-static
+          S3_ENDPOINT: ${{ vars.FLUXER_S3_ENDPOINT || 'https://ewr1.vultrobjects.com' }}
+          STATIC_BUCKET: ${{ vars.FLUXER_S3_STATIC_BUCKET || 'fluxer-static' }}
         run: >-
           cargo run --locked --quiet --manifest-path tools/ci/Cargo.toml -- build-app-proxy
           --step upload_assets
@@ -137,7 +138,7 @@ jobs:
   build-arm64:
     name: build app-proxy (arm64)
     needs: meta
-    runs-on: blacksmith-4vcpu-ubuntu-2404-arm
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
