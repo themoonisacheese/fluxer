@@ -139,11 +139,21 @@ jobs:
             PRERELEASE_FLAG="--prerelease"
           fi
 
+          echo "=== Artifacts structure ==="
+          find artifacts -maxdepth 3 -type f | head -50
+
           # Delete existing release so creation is always clean
           gh release delete "$TAG" --cleanup-tag --yes 2>/dev/null || true
 
-          # Only upload the packaged installer artifacts, skip loose internal files
-          find artifacts -type f -name '*.AppImage' -o -name '*.deb' -o -name '*.rpm' -o -name '*.tar.gz' -o -name '*.exe' -o -name '*.sha256' -print0 | xargs -0 gh release create "$TAG" \
+          # Collect the packaged installer artifacts (skip .blockmap, loose icons, etc.)
+          find artifacts \( -type f -a \( \
+            -name '*.AppImage' -o \
+            -name '*.deb' -o \
+            -name '*.rpm' -o \
+            -name '*.tar.gz' -o \
+            -name '*.exe' -o \
+            -name '*.sha256' \
+          \) \) -print0 | xargs -0 gh release create "$TAG" \
             --title "Fluxer Desktop ${BUILD_CHANNEL} $(date -u +%Y-%m-%d)" \
             --notes "Desktop client build for ${BUILD_CHANNEL} channel." \
             $PRERELEASE_FLAG
