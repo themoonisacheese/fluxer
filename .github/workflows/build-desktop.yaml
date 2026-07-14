@@ -139,8 +139,16 @@ jobs:
             PRERELEASE_FLAG="--prerelease"
           fi
 
-          find artifacts -type f -not -name 'app.asar' -not -name '*.dat' -not -name '*.pak' -not -name '*.bin' -not -name 'icudtl.dat' -not -name 'resources.pak' -not -name 'v8_context_snapshot.bin' -not -name 'vk_swiftshader.dll' -not -name 'snapshot_blob.bin' -print0 | xargs -0 gh release create "$TAG" \
-            --title "Fluxer Desktop ${BUILD_CHANNEL} $(date -u +%Y-%m-%d)" \
-            --notes "Desktop client build for ${BUILD_CHANNEL} channel." \
-            --clobber \
-            $PRERELEASE_FLAG
+          # Collect artifact files (exclude Electron internals)
+          mapfile -t FILES < <(find artifacts -type f -not -name 'app.asar' -not -name '*.dat' -not -name '*.pak' -not -name '*.bin' -not -name 'icudtl.dat' -not -name 'resources.pak' -not -name 'v8_context_snapshot.bin' -not -name 'vk_swiftshader.dll' -not -name 'snapshot_blob.bin')
+
+          if gh release view "$TAG" --json id &>/dev/null; then
+            # Release exists — upload (or replace) assets
+            gh release upload "$TAG" "${FILES[@]}" --clobber
+          else
+            # Create release and upload assets together
+            gh release create "$TAG" "${FILES[@]}" \
+              --title "Fluxer Desktop ${BUILD_CHANNEL} $(date -u +%Y-%m-%d)" \
+              --notes "Desktop client build for ${BUILD_CHANNEL} channel." \
+              $PRERELEASE_FLAG
+          fi
