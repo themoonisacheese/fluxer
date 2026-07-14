@@ -152,7 +152,7 @@ jobs:
           FILES=()
           while IFS= read -r -d '' f; do
             FILES+=("$f")
-          done < <(find artifacts \( -type f -a \( \
+          done < <(find artifacts -maxdepth 2 \( -type f -a \( \
             -name '*.AppImage' -o \
             -name '*.deb' -o \
             -name '*.rpm' -o \
