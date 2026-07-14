@@ -145,7 +145,13 @@ jobs:
           # Delete existing release so creation is always clean
           gh release delete "$TAG" --cleanup-tag --yes 2>/dev/null || true
 
-          # Collect the packaged installer artifacts (skip .blockmap, loose icons, etc.)
+          # Create empty release
+          gh release create "$TAG" \
+            --title "Fluxer Desktop ${BUILD_CHANNEL} $(date -u +%Y-%m-%d)" \
+            --notes "Desktop client build for ${BUILD_CHANNEL} channel." \
+            $PRERELEASE_FLAG
+
+          # Upload all packaged installer artifacts (skip .blockmap, loose icons, etc.)
           find artifacts \( -type f -a \( \
             -name '*.AppImage' -o \
             -name '*.deb' -o \
@@ -153,7 +159,4 @@ jobs:
             -name '*.tar.gz' -o \
             -name '*.exe' -o \
             -name '*.sha256' \
-          \) \) -print0 | xargs -0 gh release create "$TAG" \
-            --title "Fluxer Desktop ${BUILD_CHANNEL} $(date -u +%Y-%m-%d)" \
-            --notes "Desktop client build for ${BUILD_CHANNEL} channel." \
-            $PRERELEASE_FLAG
+          \) \) -print0 | xargs -0 gh release upload "$TAG" --clobber
