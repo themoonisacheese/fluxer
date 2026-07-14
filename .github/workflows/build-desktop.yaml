@@ -11,7 +11,7 @@ on:
         options: [stable, canary]
         default: stable
   push:
-    tags: ['v*']
+    tags: ['v*', 'canary-*']
 
 permissions:
   contents: write
