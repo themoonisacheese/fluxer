@@ -147,11 +147,11 @@ const BrowserLoginHandoffModal = observer(
 					);
 					return;
 				}
-				if (baseUrl !== window.location.origin && handoffCode) {
+				if (baseUrl !== window.location.origin) {
 					try {
 						await switchInstanceUrl({
 							instanceUrl: baseUrl,
-							desktopHandoffCode: handoffCode,
+							initiateBrowserLogin: true,
 						});
 					} catch (switchError) {
 						const detail = switchError instanceof Error ? switchError.message : String(switchError);
@@ -166,16 +166,7 @@ const BrowserLoginHandoffModal = observer(
 				loginUrl.searchParams.set('email', prefillEmail);
 			}
 			await openExternalUrl(loginUrl.toString());
-		}, [
-			canSwitchInstanceUrl,
-			currentWebAppUrl,
-			handoffCode,
-			i18n,
-			instanceUrl,
-			prefillEmail,
-			switchInstanceUrl,
-			targetWebAppUrl,
-		]);
+		}, [canSwitchInstanceUrl, currentWebAppUrl, i18n, instanceUrl, prefillEmail, switchInstanceUrl, targetWebAppUrl]);
 		return (
 			<Modal.Root
 				size="small"

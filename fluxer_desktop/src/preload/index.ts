@@ -488,6 +488,7 @@ const api: ElectronAPI = {
 	switchInstanceUrl: (options: SwitchInstanceUrlOptions): Promise<void> =>
 		ipcRenderer.invoke('switch-instance-url', options),
 	consumeDesktopHandoffCode: (): Promise<string | null> => ipcRenderer.invoke('consume-desktop-handoff-code'),
+	consumeBrowserLoginInitiation: (): Promise<boolean> => ipcRenderer.invoke('consume-browser-login-initiation'),
 	toggleDevTools: (): void => {
 		ipcRenderer.send('toggle-devtools');
 	},

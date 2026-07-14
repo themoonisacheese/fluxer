@@ -87,6 +87,25 @@ async function resumePendingDesktopHandoffLogin(
 	if (!electronApi || typeof electronApi.consumeDesktopHandoffCode !== 'function') {
 		return;
 	}
+
+	const shouldInitiateBrowserLogin =
+		typeof electronApi.consumeBrowserLoginInitiation === 'function' &&
+		(await electronApi.consumeBrowserLoginInitiation().catch(() => false));
+
+	if (shouldInitiateBrowserLogin) {
+		const {showBrowserLoginHandoffModal} = await loadLazyModule(
+			() => import('@app/features/auth/flow/BrowserLoginHandoffModal'),
+		);
+		showBrowserLoginHandoffModal(async (payload) => {
+			await authenticationCommands.completeLogin({
+				token: payload.token,
+				userId: payload.userId,
+				...(payload.userData ? {userData: payload.userData} : {}),
+			});
+		});
+		return;
+	}
+
 	let handoffCode: string | null = null;
 	try {
 		handoffCode = await electronApi.consumeDesktopHandoffCode();

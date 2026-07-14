@@ -93,6 +93,36 @@ interface TrayRuntimeStateUpdate {
 }
 
 let pendingDesktopHandoffCode: string | null = null;
+let pendingBrowserLoginInitiation = false;
+
+async function fetchWellKnown(instanceOrigin: string, path: string): Promise<unknown> {
+	const url = new URL(path, instanceOrigin).toString();
+	const controller = new AbortController();
+	const timeout = setTimeout(() => controller.abort(), 5000);
+	try {
+		const response = await fetch(url, {
+			method: 'GET',
+			headers: {
+				Accept: 'application/json',
+			},
+			signal: controller.signal,
+		});
+		if (!response.ok) {
+			throw new Error(`HTTP ${response.status}`);
+		}
+		const contentType = response.headers.get('content-type') ?? '';
+		if (!contentType.includes('application/json')) {
+			throw new Error('Expected JSON, got non-JSON response');
+		}
+		const payload = (await response.json()) as unknown;
+		if (!isValidWellKnownPayload(payload)) {
+			throw new Error('Malformed discovery document');
+		}
+		return payload;
+	} finally {
+		clearTimeout(timeout);
+	}
+}
 
 function normalizeInstanceOrigin(rawUrl: string): string {
 	const trimmed = rawUrl.trim();
@@ -191,29 +221,15 @@ function getActiveMiddleClickAutoscroll(): boolean {
 }
 
 async function assertValidFluxerInstance(instanceOrigin: string): Promise<void> {
-	const url = new URL('/.well-known/fluxer', instanceOrigin).toString();
-	const controller = new AbortController();
-	const timeout = setTimeout(() => controller.abort(), 5000);
 	try {
-		const response = await fetch(url, {
-			method: 'GET',
-			headers: {
-				Accept: 'application/json',
-			},
-			signal: controller.signal,
-		});
-		if (!response.ok) {
-			throw new Error(`HTTP ${response.status}`);
+		await fetchWellKnown(instanceOrigin, '/.well-known/fluxer');
+	} catch (rootError) {
+		try {
+			await fetchWellKnown(instanceOrigin, '/api/.well-known/fluxer');
+		} catch {
+			const rootMessage = rootError instanceof Error ? rootError.message : String(rootError);
+			throw new Error(`Not a valid Fluxer instance (${rootMessage}); also tried /api/.well-known/fluxer`);
 		}
-		const payload = (await response.json()) as unknown;
-		if (!isValidWellKnownPayload(payload)) {
-			throw new Error('Malformed discovery document');
-		}
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		throw new Error(`Not a valid Fluxer instance (${message})`);
-	} finally {
-		clearTimeout(timeout);
 	}
 }
 
@@ -228,13 +244,18 @@ export function registerIpcHandlers(): void {
 			throw new Error('Main window not available');
 		}
 		pendingDesktopHandoffCode = options.desktopHandoffCode ?? null;
+		pendingBrowserLoginInitiation = options.initiateBrowserLogin ?? false;
 		setCustomAppUrl(instanceOrigin);
 		try {
 			await mainWindow.loadURL(instanceOrigin);
 		} catch (error) {
+			const detail = error instanceof Error ? error.message : String(error);
+			if (detail.includes('ERR_ABORTED')) {
+				return;
+			}
 			setCustomAppUrl(null);
 			pendingDesktopHandoffCode = null;
-			const detail = error instanceof Error ? error.message : String(error);
+			pendingBrowserLoginInitiation = false;
 			throw new Error(`Failed to load instance: ${detail}`);
 		}
 	});
@@ -242,6 +263,11 @@ export function registerIpcHandlers(): void {
 		const code = pendingDesktopHandoffCode;
 		pendingDesktopHandoffCode = null;
 		return code;
+	});
+	ipcMain.handle('consume-browser-login-initiation', (): boolean => {
+		const pending = pendingBrowserLoginInitiation;
+		pendingBrowserLoginInitiation = false;
+		return pending;
 	});
 	ipcMain.handle('get-desktop-info', () => getDesktopInfo());
 	ipcMain.handle('get-gpu-info', () => getGpuInfo());

@@ -257,6 +257,7 @@ export interface DownloadFileResult {
 export interface SwitchInstanceUrlOptions {
 	instanceUrl: string;
 	desktopHandoffCode?: string | null;
+	initiateBrowserLogin?: boolean;
 }
 
 export type MediaAccessType = 'microphone' | 'camera' | 'screen' | 'audio-capture';
@@ -786,6 +787,7 @@ export interface ElectronAPI {
 	passkeyRegister: (options: PublicKeyCredentialCreationOptionsJSON) => Promise<RegistrationResponseJSON>;
 	switchInstanceUrl: (options: SwitchInstanceUrlOptions) => Promise<void>;
 	consumeDesktopHandoffCode: () => Promise<string | null>;
+	consumeBrowserLoginInitiation: () => Promise<boolean>;
 	virtmic: VirtmicApi;
 	nativeAudio: NativeAudioApi;
 	nativeScreenCapture: NativeScreenCaptureApi;
