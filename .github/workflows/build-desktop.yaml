@@ -108,6 +108,9 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+
+
+
   release:
     name: Publish GitHub Release
     needs: build
@@ -135,6 +138,14 @@ jobs:
           if [ "$BUILD_CHANNEL" = "canary" ]; then
             PRERELEASE_FLAG="--prerelease"
           fi
+
+          # Delete existing assets to avoid conflicts
+          gh release view "$TAG" --json assets --jq '.assets[].name' 2>/dev/null | while read asset; do
+            if [ -n "$asset" ]; then
+              gh release delete-asset "$TAG" "$asset" 2>/dev/null || true
+            fi
+          done
+
           find artifacts -type f -not -name 'app.asar' -not -name '*.dat' -not -name '*.pak' -not -name '*.bin' -not -name 'icudtl.dat' -not -name 'resources.pak' -not -name 'v8_context_snapshot.bin' -not -name 'vk_swiftshader.dll' -not -name 'snapshot_blob.bin' -print0 | xargs -0 gh release create "$TAG" \
             --title "Fluxer Desktop ${BUILD_CHANNEL} $(date -u +%Y-%m-%d)" \
             --notes "Desktop client build for ${BUILD_CHANNEL} channel." \
