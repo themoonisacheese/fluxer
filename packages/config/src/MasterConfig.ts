@@ -315,7 +315,8 @@ export interface MasterConfig {
 				app_id?: string;
 				project_id?: string;
 				api_key?: string;
-				sender_id?: string;
+				messaging_sender_id?: string;
+				storage_bucket?: string;
 			};
 		};
 	};

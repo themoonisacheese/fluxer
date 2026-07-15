@@ -64,7 +64,8 @@ function buildDiscoveryStaticInput(
 						app_id: Config.push.androidFcm.appId ?? '',
 						project_id: Config.push.androidFcm.projectId ?? '',
 						api_key: Config.push.androidFcm.apiKey ?? '',
-						sender_id: Config.push.androidFcm.senderId ?? '',
+						messaging_sender_id: Config.push.androidFcm.messagingSenderId ?? '',
+						storage_bucket: Config.push.androidFcm.storageBucket ?? '',
 				  }
 				: null,
 		},

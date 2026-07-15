@@ -422,7 +422,8 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 						appId: master.integrations.push.android_app_fcm.app_id,
 						projectId: master.integrations.push.android_app_fcm.project_id,
 						apiKey: master.integrations.push.android_app_fcm.api_key,
-						senderId: master.integrations.push.android_app_fcm.sender_id,
+						messagingSenderId: master.integrations.push.android_app_fcm.messaging_sender_id,
+						storageBucket: master.integrations.push.android_app_fcm.storage_bucket,
 				  }
 				: undefined,
 			apns: {

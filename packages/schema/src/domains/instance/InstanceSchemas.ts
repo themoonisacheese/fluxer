@@ -135,7 +135,8 @@ export const WellKnownFluxerResponse = z.object({
 					app_id: z.string().describe('Firebase App ID for the Android FCM push provider'),
 					project_id: z.string().describe('Firebase project ID (also the FCM sender/topic prefix)'),
 					api_key: z.string().describe('Firebase Web API key used for Android FCM registration'),
-					sender_id: z.string().describe('Firebase Sender ID for the Android FCM push provider'),
+					messaging_sender_id: z.string().describe('Firebase Sender ID for the Android FCM push provider'),
+					storage_bucket: z.string().describe('Firebase Storage bucket URL'),
 				})
 				.nullable()
 				.describe('Android app FCM credentials for push notifications, or null if not configured'),

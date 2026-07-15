@@ -351,7 +351,8 @@ export interface APIConfig {
 			appId?: string;
 			projectId?: string;
 			apiKey?: string;
-			senderId?: string;
+			messagingSenderId?: string;
+			storageBucket?: string;
 		};
 	};
 	worker: {
