@@ -45,6 +45,10 @@ if (electronArch && !supportedTargetArchs.includes(electronArch)) {
 const targetArchs = electronArch ? [electronArch] : supportedTargetArchs;
 const winTargets = [
 	{
+		target: 'nsis',
+		arch: targetArchs,
+	},
+	{
 		target: 'dir',
 		arch: targetArchs,
 	},
@@ -1232,6 +1236,13 @@ module.exports = {
 	win: {
 		icon: `build_resources/${iconDir}/icon.ico`,
 		target: winTargets,
+	},
+	nsis: {
+		oneClick: false,
+		perMachine: false,
+		allowToChangeInstallationDirectory: true,
+		// biome-ignore lint/suspicious/noTemplateCurlyInString: electron-builder expands these placeholders.
+		artifactName: '${productName}-${version}-${os}-${arch}.${ext}',
 	},
 	portable: {
 		// biome-ignore lint/suspicious/noTemplateCurlyInString: electron-builder expands these placeholders.
