@@ -416,6 +416,15 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 		inactivityDeletionThresholdDays: master.inactivity_deletion_threshold_days,
 		push: {
 			publicVapidKey: master.auth.vapid.public_key,
+			androidFcm: master.integrations.push.android_app_fcm?.enabled
+				? {
+						enabled: true,
+						appId: master.integrations.push.android_app_fcm.app_id,
+						projectId: master.integrations.push.android_app_fcm.project_id,
+						apiKey: master.integrations.push.android_app_fcm.api_key,
+						senderId: master.integrations.push.android_app_fcm.sender_id,
+				  }
+				: undefined,
 			apns: {
 				enabled: master.integrations.push.apns.enabled,
 				teamId: master.integrations.push.apns.team_id,
