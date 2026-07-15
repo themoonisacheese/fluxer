@@ -249,6 +249,13 @@ function defaultConfig(): MasterConfig {
 					enabled: false,
 					apps: [],
 				},
+				android_app_fcm: {
+					enabled: false,
+					app_id: '',
+					project_id: '',
+					api_key: '',
+					sender_id: '',
+				},
 			},
 		},
 		instance: {
