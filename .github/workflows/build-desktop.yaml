@@ -47,24 +47,6 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install Linux dependencies
-        if: matrix.platform == 'linux'
-        env:
-          DEBIAN_FRONTEND: noninteractive
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            libgtk-3-dev libasound2-dev libdbus-1-dev libnotify-dev \
-            libxss-dev libxtst-dev libnss3-dev libsecret-1-dev librpm-dev \
-            libx11-dev libxt-dev libxinerama-dev libxkbcommon-dev libxrandr-dev \
-            libpixman-1-dev libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev \
-            librsvg2-dev libpipewire-0.3-dev libspa-0.2-dev libudev-dev \
-            libhunspell-dev libfido2-dev libcbor-dev libssl-dev \
-            libegl-dev libpulse-dev libclang-dev clang \
-            pkg-config build-essential binutils nasm rpm \
-            desktop-file-utils appstream
-          sudo gem install --no-document fpm
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 

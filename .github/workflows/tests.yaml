@@ -112,18 +112,6 @@ jobs:
           restore-keys: |
             rust-${{ runner.os }}-
 
-      - name: Install native dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            pkg-config \
-            build-essential \
-            libcurl4-openssl-dev \
-            libvips-dev \
-            libavfilter-dev \
-            libheif-dev \
-            libwebp-dev
-
       - name: Install Node.js dependencies
         run: pnpm --filter fluxer_admin --filter fluxer_marketing install
 
@@ -250,9 +238,6 @@ jobs:
         uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9
         with:
           toolchain: "1.93.0"
-
-      - name: Install helm
-        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310
 
       - name: Resolve Helm test build version
         run: >-
