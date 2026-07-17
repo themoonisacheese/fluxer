@@ -85,7 +85,7 @@ env:
 jobs:
   deploy:
     name: deploy ${{ inputs.service }}
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     timeout-minutes: 60
     environment: ${{ inputs.channel }}
     permissions:

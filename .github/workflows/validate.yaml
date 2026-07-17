@@ -13,7 +13,7 @@ permissions: {}
 jobs:
   validate-title:
     name: Validate title
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Validate pull request title
         env:

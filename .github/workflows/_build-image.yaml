@@ -53,7 +53,7 @@ env:
 jobs:
   meta:
     name: resolve metadata
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     timeout-minutes: 5
     outputs:
       build_version: ${{ steps.vars.outputs.build_version }}
@@ -84,7 +84,7 @@ jobs:
       matrix:
         include:
           - platform: amd64
-            runner: ubuntu-24.04
+            runner: self-hosted
           - platform: arm64
             runner: ubuntu-24.04-arm
     steps:
@@ -117,7 +117,7 @@ jobs:
   merge:
     name: merge multi-arch manifest
     needs: [meta, build]
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
@@ -176,7 +176,7 @@ jobs:
     name: finalise GitHub release
     if: ${{ inputs['finalise-release'] }}
     needs: [meta, merge]
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0

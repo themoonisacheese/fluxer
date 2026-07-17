@@ -12,7 +12,7 @@ on:
 
 jobs:
   repair:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     environment: static-assets
     timeout-minutes: 30
     permissions:
