@@ -68,11 +68,10 @@ build_notification_message(DeviceToken, Payload) ->
     wrap_notification_message(DeviceToken, NotificationBody, Data, AndroidNotification, Group).
 
 -spec build_android_notification(binary(), binary() | undefined, binary()) -> map().
-build_android_notification(Tag, ImageUrl, Group) ->
+build_android_notification(Tag, ImageUrl, _Group) ->
     maybe_put(<<"image">>, ImageUrl, #{
         <<"channel_id">> => <<"fluxer_default_push">>,
         <<"tag">> => Tag,
-        <<"group">> => Group,
         <<"click_action">> => <<"FLUXER_MESSAGE">>
     }).
 
@@ -194,8 +193,12 @@ handle_response(_UserId, _SubscriptionId, {ok, Status, _, _}) when
     Status >= 200, Status < 300
 ->
     false;
-handle_response(UserId, SubscriptionId, {ok, _Status, _, Body}) ->
+handle_response(UserId, SubscriptionId, {ok, Status, _, Body}) ->
     Reason = fcm_error_code(Body),
+    logger:warning(
+        "Push: FCM delivery rejected",
+        #{user_id => UserId, subscription_id => SubscriptionId, status => Status, reason => Reason, body => Body}
+    ),
     case is_permanent_fcm_error(Reason) of
         true -> {true, delete_payload(UserId, SubscriptionId)};
         false -> false
@@ -280,20 +283,23 @@ first_binary([Value | Rest]) ->
 -spec fcm_error_code(binary()) -> binary().
 fcm_error_code(Body) ->
     case decode_json_map(Body) of
-        #{<<"error">> := #{<<"details">> := Details}} when is_list(Details) ->
-            fcm_details_error_code(Details);
+        #{<<"error">> := #{<<"details">> := Details}} = Error when is_list(Details) ->
+            case find_fcm_error_code(Details) of
+                undefined -> error_status(Error);
+                Code -> Code
+            end;
         #{<<"error">> := #{<<"status">> := Status}} when is_binary(Status) ->
             Status;
+        #{<<"error">> := #{<<"message">> := Message}} when is_binary(Message) ->
+            Message;
         _ ->
             <<"http_error">>
     end.
 
--spec fcm_details_error_code(list()) -> binary().
-fcm_details_error_code(Details) ->
-    case find_fcm_error_code(Details) of
-        undefined -> <<"http_error">>;
-        Code -> Code
-    end.
+-spec error_status(map()) -> binary().
+error_status(#{<<"status">> := Status}) when is_binary(Status) -> Status;
+error_status(#{<<"message">> := Message}) when is_binary(Message) -> Message;
+error_status(_) -> <<"http_error">>.
 
 -spec find_fcm_error_code(list()) -> binary() | undefined.
 find_fcm_error_code([]) -> undefined;
@@ -345,7 +351,7 @@ build_message_includes_android_chat_notification_fields_test() ->
     AndroidNotification = maps:get(<<"notification">>, maps:get(<<"android">>, Message)),
     ?assertEqual(<<"fluxer_default_push">>, maps:get(<<"channel_id">>, AndroidNotification)),
     ?assertEqual(<<"channel:123:456">>, maps:get(<<"tag">>, AndroidNotification)),
-    ?assertEqual(<<"channel:123">>, maps:get(<<"group">>, AndroidNotification)),
+    ?assertEqual(false, maps:is_key(<<"group">>, AndroidNotification)),
     Android = maps:get(<<"android">>, Message),
     ?assertEqual(<<"channel:123">>, maps:get(<<"collapse_key">>, Android)),
     ?assertEqual(
