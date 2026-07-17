@@ -23,14 +23,14 @@ jobs:
   build:
     name: Build ${{ matrix.platform }} (${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: linux
             arch: x64
-            os: ubuntu-24.04
+            os: self-hosted
           - platform: windows
             arch: x64
             os: windows-2022
@@ -49,10 +49,21 @@ jobs:
 
       - name: Install Linux dependencies
         if: matrix.platform == 'linux'
+        env:
+          DEBIAN_FRONTEND: noninteractive
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libasound2-dev libdbus-1-dev libnotify-dev libxss-dev libxtst-dev libnss3-dev libsecret-1-dev librpm-dev
-          sudo gem install fpm
+          sudo apt-get install -y --no-install-recommends \
+            libgtk-3-dev libasound2-dev libdbus-1-dev libnotify-dev \
+            libxss-dev libxtst-dev libnss3-dev libsecret-1-dev librpm-dev \
+            libx11-dev libxt-dev libxinerama-dev libxkbcommon-dev libxrandr-dev \
+            libpixman-1-dev libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev \
+            librsvg2-dev libpipewire-0.3-dev libspa-0.2-dev libudev-dev \
+            libhunspell-dev libfido2-dev libcbor-dev libssl-dev \
+            libegl-dev libpulse-dev libclang-dev clang \
+            pkg-config build-essential binutils nasm rpm \
+            desktop-file-utils appstream
+          sudo gem install --no-document fpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -61,7 +72,11 @@ jobs:
         working-directory: fluxer_desktop
         env:
           BUILD_CHANNEL: ${{ env.BUILD_CHANNEL }}
-          FLUXER_SKIP_NATIVE: 'true'
+          ELECTRON_ARCH: ${{ matrix.arch }}
+          # Windows native addons need MSVC + LiveKit SDK setup that this
+          # simplified workflow doesn't provide yet; skip them so the build
+          # can produce installers. Linux builds compile native addons.
+          FLUXER_SKIP_NATIVE: ${{ matrix.platform == 'windows' && 'true' || '' }}
         run: node scripts/build.mjs
 
       - name: Build Electron app (Linux)
@@ -69,7 +84,7 @@ jobs:
         working-directory: fluxer_desktop
         env:
           BUILD_CHANNEL: ${{ env.BUILD_CHANNEL }}
-          FLUXER_SKIP_NATIVE: 'true'
+          ELECTRON_ARCH: ${{ matrix.arch }}
           USE_SYSTEM_FPM: 'true'
         run: npx electron-builder --linux --${{ matrix.arch }} --config electron-builder.config.cjs
 
@@ -114,7 +129,7 @@ jobs:
   release:
     name: Publish GitHub Release
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
