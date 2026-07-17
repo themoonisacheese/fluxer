@@ -16,7 +16,7 @@ env:
 
 jobs:
   typecheck:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     timeout-minutes: 25
     steps:
       - name: Checkout code
@@ -48,7 +48,7 @@ jobs:
           --step typecheck
 
   test:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     timeout-minutes: 25
     steps:
       - name: Checkout code
@@ -80,7 +80,7 @@ jobs:
           --step test
 
   rust:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     timeout-minutes: 30
     steps:
       - name: Checkout code
@@ -137,7 +137,7 @@ jobs:
         run: cargo test --workspace
 
   gateway:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     timeout-minutes: 25
     steps:
       - name: Checkout code
@@ -185,7 +185,7 @@ jobs:
           --step gateway_eunit
 
   knip:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     timeout-minutes: 25
     steps:
       - name: Checkout code
@@ -217,7 +217,7 @@ jobs:
           --step knip
 
   ci-scripts:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     timeout-minutes: 25
     steps:
       - name: Checkout code
@@ -240,7 +240,7 @@ jobs:
           --step test
 
   helm-and-scripts:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     timeout-minutes: 10
     steps:
       - name: Checkout code

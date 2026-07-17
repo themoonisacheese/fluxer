@@ -62,6 +62,13 @@ export interface InstanceServices {
 
 export interface InstancePush {
 	public_vapid_key: string | null;
+	android_fcm: {
+		app_id: string;
+		project_id: string;
+		api_key: string;
+		messaging_sender_id: string;
+		storage_bucket: string;
+	} | null;
 }
 
 export interface InstanceBranding {

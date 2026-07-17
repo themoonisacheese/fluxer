@@ -42,7 +42,7 @@ jobs:
   automatic:
     name: Lock closed conversation
     if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Create token
         id: create-token
@@ -156,7 +156,7 @@ jobs:
   retroactive:
     name: Lock closed conversations retroactively
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Create token
         id: create-token

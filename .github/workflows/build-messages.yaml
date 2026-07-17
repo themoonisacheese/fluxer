@@ -41,7 +41,7 @@ jobs:
   approve:
     name: approve build release
     if: ${{ format('{0}', inputs['approval-required']) != 'false' }}
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     environment: builds
     timeout-minutes: 5
     steps:

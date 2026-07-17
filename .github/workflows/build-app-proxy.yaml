@@ -44,7 +44,7 @@ jobs:
   approve:
     name: approve build release
     if: ${{ format('{0}', inputs['approval-required']) != 'false' }}
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     environment: builds
     timeout-minutes: 5
     steps:
@@ -55,7 +55,7 @@ jobs:
     name: resolve metadata
     needs: approve
     if: ${{ !cancelled() && (needs.approve.result == 'success' || needs.approve.result == 'skipped') }}
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     timeout-minutes: 5
     outputs:
       build_version: ${{ steps.vars.outputs.build_version }}
@@ -77,7 +77,7 @@ jobs:
   build:
     name: build app-proxy (amd64)
     needs: meta
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
@@ -170,7 +170,7 @@ jobs:
   merge:
     name: merge multi-arch manifest
     needs: [meta, build, build-arm64]
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
@@ -232,7 +232,7 @@ jobs:
     name: finalise GitHub release
     if: ${{ inputs['finalise-release'] != false }}
     needs: [meta, merge]
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0

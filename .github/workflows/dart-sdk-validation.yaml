@@ -15,7 +15,7 @@ concurrency:
 jobs:
   openapi-drift:
     name: Detect OpenAPI schema drift
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     timeout-minutes: 15
     steps:
       - name: Checkout fluxer

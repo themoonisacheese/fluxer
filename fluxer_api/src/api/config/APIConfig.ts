@@ -346,6 +346,14 @@ export interface APIConfig {
 			tokenUri: string;
 			apps: Array<PushProviderAppConfig>;
 		};
+		androidFcm?: {
+			enabled: boolean;
+			appId?: string;
+			projectId?: string;
+			apiKey?: string;
+			messagingSenderId?: string;
+			storageBucket?: string;
+		};
 	};
 	worker: {
 		mode: APIWorkerMode;

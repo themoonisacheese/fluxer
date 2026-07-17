@@ -17,7 +17,7 @@ concurrency:
 jobs:
   enforce:
     name: Enforce template marker
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Create token
         id: create-token

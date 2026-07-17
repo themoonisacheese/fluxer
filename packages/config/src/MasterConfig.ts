@@ -310,6 +310,14 @@ export interface MasterConfig {
 					project_id?: string;
 				}>;
 			};
+			android_app_fcm?: {
+				enabled: boolean;
+				app_id?: string;
+				project_id?: string;
+				api_key?: string;
+				messaging_sender_id?: string;
+				storage_bucket?: string;
+			};
 		};
 	};
 	instance: {

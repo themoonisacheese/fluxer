@@ -59,6 +59,15 @@ function buildDiscoveryStaticInput(
 		},
 		push: {
 			public_vapid_key: Config.push.publicVapidKey ?? null,
+			android_fcm: Config.push.androidFcm?.enabled
+				? {
+						app_id: Config.push.androidFcm.appId ?? '',
+						project_id: Config.push.androidFcm.projectId ?? '',
+						api_key: Config.push.androidFcm.apiKey ?? '',
+						messaging_sender_id: Config.push.androidFcm.messagingSenderId ?? '',
+						storage_bucket: Config.push.androidFcm.storageBucket ?? '',
+				  }
+				: null,
 		},
 		appPublic,
 	};
