@@ -46,6 +46,13 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'windows' && 'x86_64-pc-windows-msvc,i686-pc-windows-msvc' || '' }}
+
+      - name: Install NASM (Windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: choco install nasm -y
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -55,10 +62,7 @@ jobs:
         env:
           BUILD_CHANNEL: ${{ env.BUILD_CHANNEL }}
           ELECTRON_ARCH: ${{ matrix.arch }}
-          # Windows native addons need MSVC + LiveKit SDK setup that this
-          # simplified workflow doesn't provide yet; skip them so the build
-          # can produce installers. Linux builds compile native addons.
-          FLUXER_SKIP_NATIVE: ${{ matrix.platform == 'windows' && 'true' || '' }}
+          FLUXER_WINDOWS_GAME_CAPTURE_MODULE_ENABLED: ${{ matrix.platform == 'windows' && 'true' || '' }}
         run: node scripts/build.mjs
 
       - name: Build Electron app (Linux)
@@ -75,7 +79,8 @@ jobs:
         working-directory: fluxer_desktop
         env:
           BUILD_CHANNEL: ${{ env.BUILD_CHANNEL }}
-          FLUXER_SKIP_NATIVE: 'true'
+          ELECTRON_ARCH: ${{ matrix.arch }}
+          FLUXER_WINDOWS_GAME_CAPTURE_MODULE_ENABLED: 'true'
         run: npx electron-builder --win --${{ matrix.arch }} --config electron-builder.config.cjs
 
       - name: Generate SHA256 checksums (Unix)
