@@ -712,6 +712,8 @@ fn build_disable_single_community_update() -> InstanceConfigUpdateRequest {
             direct_messages_disabled: None,
             premium_mode: None,
             services: None,
+            welcome_dm_enabled: None,
+            welcome_dm_content: None,
         }),
         integrations: None,
         media: None,
