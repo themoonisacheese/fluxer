@@ -543,6 +543,8 @@ fn build_policy_update(form: &MultiValueForm) -> InstanceConfigUpdateRequest {
         _ => None,
     };
     let services = build_services_update(form);
+    let welcome_dm_enabled = Some(form.first("policy_welcome_dm_enabled").is_some());
+    let welcome_dm_content = form.clean("policy_welcome_dm_content");
     InstanceConfigUpdateRequest {
         gateway_rollout: None,
         registration: None,
@@ -554,6 +556,8 @@ fn build_policy_update(form: &MultiValueForm) -> InstanceConfigUpdateRequest {
             direct_messages_disabled,
             premium_mode,
             services,
+            welcome_dm_enabled,
+            welcome_dm_content,
         }),
         integrations: None,
         media: None,

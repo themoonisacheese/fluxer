@@ -39,6 +39,9 @@ pub struct InstancePolicyResponse {
     pub services_resolved: InstanceServicesResolved,
     #[serde(default)]
     pub services_available: InstanceServicesAvailable,
+    #[serde(default)]
+    pub welcome_dm_enabled: bool,
+    pub welcome_dm_content: Option<String>,
 }
 
 impl Default for InstancePolicyResponse {
@@ -53,6 +56,8 @@ impl Default for InstancePolicyResponse {
             services: InstanceServicesOverrides::default(),
             services_resolved: InstanceServicesResolved::default(),
             services_available: InstanceServicesAvailable::default(),
+            welcome_dm_enabled: false,
+            welcome_dm_content: None,
         }
     }
 }
@@ -519,6 +524,10 @@ pub struct InstancePolicyUpdateRequest {
     pub premium_mode: Option<PremiumMode>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub services: Option<InstanceServicesUpdateRequest>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub welcome_dm_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub welcome_dm_content: Option<String>,
 }
 
 #[derive(Clone, Debug, Default, Serialize)]

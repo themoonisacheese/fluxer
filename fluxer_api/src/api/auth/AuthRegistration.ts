@@ -447,6 +447,21 @@ export async function register(
 	if (grantBootstrapAdmin) {
 		await instanceConfigRepository.markAdminBootstrapped();
 	}
+	// Fire welcome DM if enabled in instance policy
+	try {
+		const policyConfig = await instanceConfigRepository.getInstancePolicyConfig();
+		if (policyConfig.welcome_dm_enabled) {
+			const content = policyConfig.welcome_dm_content ?? 'Welcome to **{instance_name}**! We\'re glad to have you here. Check out the rules and introduce yourself in #introductions.';
+			ctx.services.worker.addJob('sendSystemDm', {
+				content,
+				user_ids: [user.id.toString()],
+			}).catch((error: unknown) => {
+				Logger.warn({userId: user.id.toString(), error}, '[AuthRegistration] Failed to queue welcome DM');
+			});
+		}
+	} catch (error) {
+		Logger.warn({userId: user.id.toString(), error}, '[AuthRegistration] Failed to check welcome DM policy');
+	}
 	return {
 		user_id: user.id.toString(),
 		token,

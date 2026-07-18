@@ -85,6 +85,8 @@ export interface InstancePolicyConfig {
 	gif_enabled: boolean | null;
 	youtube_enabled: boolean | null;
 	bluesky_enabled: boolean | null;
+	welcome_dm_enabled: boolean;
+	welcome_dm_content: string | null;
 }
 
 interface InstanceCommunityPublicConfig {
@@ -404,6 +406,8 @@ const DEFAULT_INSTANCE_POLICY_CONFIG: InstancePolicyConfig = {
 	gif_enabled: null,
 	youtube_enabled: null,
 	bluesky_enabled: null,
+	welcome_dm_enabled: false,
+	welcome_dm_content: null,
 };
 
 function isPremiumMode(value: unknown): value is InstancePremiumMode {
@@ -428,6 +432,8 @@ function normalizeInstancePolicyConfig(value: unknown): InstancePolicyConfig {
 		gif_enabled: normalizeNullableBoolean(value.gif_enabled),
 		youtube_enabled: normalizeNullableBoolean(value.youtube_enabled),
 		bluesky_enabled: normalizeNullableBoolean(value.bluesky_enabled),
+		welcome_dm_enabled: value.welcome_dm_enabled === true,
+		welcome_dm_content: normalizeNullableString(value.welcome_dm_content),
 	};
 }
 

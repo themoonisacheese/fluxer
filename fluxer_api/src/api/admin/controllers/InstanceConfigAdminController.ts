@@ -107,6 +107,8 @@ async function buildInstanceConfigResponse(): Promise<InstanceConfigResponse> {
 				youtube: integrations.youtube.effective_available,
 				bluesky: integrations.bluesky.effective_enabled,
 			},
+			welcome_dm_enabled: policy.welcome_dm_enabled,
+			welcome_dm_content: policy.welcome_dm_content,
 		},
 		integrations,
 		media,
@@ -592,6 +594,12 @@ async function applyInstancePolicyUpdate(
 		if (policy.services.bluesky_enabled !== undefined) {
 			patch.bluesky_enabled = policy.services.bluesky_enabled ?? null;
 		}
+	}
+	if (policy.welcome_dm_enabled !== undefined) {
+		patch.welcome_dm_enabled = policy.welcome_dm_enabled;
+	}
+	if (policy.welcome_dm_content !== undefined) {
+		patch.welcome_dm_content = policy.welcome_dm_content ?? null;
 	}
 	if (Object.keys(patch).length > 0) {
 		await instanceConfigRepository.setInstancePolicyConfig(patch);

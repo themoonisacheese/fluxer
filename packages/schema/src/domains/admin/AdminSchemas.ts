@@ -528,6 +528,8 @@ const InstancePolicyResponse = z.object({
 		youtube: z.boolean(),
 		bluesky: z.boolean(),
 	}),
+	welcome_dm_enabled: z.boolean(),
+	welcome_dm_content: z.string().nullable(),
 });
 
 const CaptchaProviderSchema = z.enum(['hcaptcha', 'turnstile', 'none']);
@@ -736,6 +738,8 @@ export const InstanceConfigUpdateRequest = z.object({
 					bluesky_enabled: z.boolean().nullish(),
 				})
 				.nullish(),
+			welcome_dm_enabled: z.boolean().optional(),
+			welcome_dm_content: z.string().trim().max(4000).nullish(),
 		})
 		.nullish(),
 });

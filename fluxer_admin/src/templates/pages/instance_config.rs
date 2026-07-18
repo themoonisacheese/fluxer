@@ -192,6 +192,7 @@ fn policy_config_section(base: &str, csrf_token: &str, policy: &InstancePolicyRe
                 (direct_messages_form(base, csrf_token, policy))
                 (premium_mode_form(base, csrf_token, policy))
                 (services_form(base, csrf_token, policy))
+                (welcome_dm_form(base, csrf_token, policy))
             }
         },
     )
@@ -374,6 +375,50 @@ fn services_form(base: &str, csrf_token: &str, policy: &InstancePolicyResponse) 
                     }
                     (form_actions(html! {
                         (submit_button("Save optional services"))
+                    }))
+                }
+            }
+        }
+    }
+}
+
+fn welcome_dm_form(base: &str, csrf_token: &str, policy: &InstancePolicyResponse) -> Markup {
+    let status = if policy.welcome_dm_enabled {
+        ("Enabled", BadgeVariant::Success)
+    } else {
+        ("Disabled", BadgeVariant::Default)
+    };
+    html! {
+        div class="space-y-4 border-t border-neutral-200 pt-6" {
+            div class="flex flex-wrap items-center gap-2" {
+                h3 class="text-sm font-semibold text-neutral-900" { "Welcome DM" }
+                (badge(status.0, status.1))
+            }
+            p class="text-sm text-neutral-500" {
+                "When enabled, the system bot sends a direct message to every newly registered \
+                 user with the content below. You can use Markdown and mention channel IDs. \
+                 Leave the content empty to use the default message."
+            }
+            form method="post" action={(base) "/instance-config?action=update_policy"} {
+                (csrf_input(csrf_token))
+                div class="space-y-4" {
+                    (checkbox(
+                        "policy_welcome_dm_enabled",
+                        "true",
+                        "Enable welcome DM on registration",
+                        policy.welcome_dm_enabled,
+                        true,
+                    ))
+                    (textarea_input(
+                        "policy_welcome_dm_content",
+                        "Welcome message content (Markdown)",
+                        "Leave blank for the default welcome message",
+                        policy.welcome_dm_content.as_deref().unwrap_or(""),
+                        4,
+                        false,
+                    ))
+                    (form_actions(html! {
+                        (submit_button("Save welcome DM"))
                     }))
                 }
             }
