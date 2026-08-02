@@ -7,7 +7,7 @@ use crate::{
         blog_tag_label, blog_tag_slug, get_blog_post, get_help_article, get_job, get_policy,
         render_blog_markdown_with_copy_label,
     },
-    downloads::fetch_latest_desktop_versions_cached,
+    downloads::{fetch_client_downloads_cached, fetch_latest_desktop_versions_cached},
     geoip::resolver_from_marketing_config,
     i18n::{Locale, MarketingI18n, descriptors::*},
     request_context::{AppState, RequestContext, create_locale_cookie},
@@ -608,9 +608,17 @@ async fn download(State(state): State<AppState>, headers: HeaderMap, uri: Uri) -
         state.config.release_channel.segment(),
     )
     .await;
-    let mut response =
-        Html(templates::download_page(&state.i18n, &ctx, &latest_versions).into_string())
-            .into_response();
+    let client_downloads = fetch_client_downloads_cached(
+        &state.latest_versions_cache,
+        &state.http_client,
+        &state.config.api_endpoint,
+    )
+    .await;
+    let mut response = Html(
+        templates::download_page(&state.i18n, &ctx, &latest_versions, &client_downloads)
+            .into_string(),
+    )
+    .into_response();
     response.headers_mut().insert(
         header::CACHE_CONTROL,
         HeaderValue::from_static("public, max-age=60, stale-while-revalidate=300"),

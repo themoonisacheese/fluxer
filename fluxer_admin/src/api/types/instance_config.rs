@@ -293,6 +293,8 @@ pub struct AppPublicConfigResponse {
     pub legal: AppLegalConfigResponse,
     #[serde(default)]
     pub registration: AppRegistrationConfigResponse,
+    #[serde(default)]
+    pub downloads: AppClientDownloadsConfigResponse,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -341,6 +343,14 @@ pub struct AppLegalConfigResponse {
 pub struct AppRegistrationConfigResponse {
     #[serde(default = "default_collect_date_of_birth")]
     pub collect_date_of_birth: bool,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub struct AppClientDownloadsConfigResponse {
+    pub desktop_update_feed_url: Option<String>,
+    pub desktop_download_url: Option<String>,
+    pub mobile_ios_url: Option<String>,
+    pub mobile_android_url: Option<String>,
 }
 
 impl Default for AppRegistrationConfigResponse {
@@ -688,6 +698,20 @@ pub struct AppPublicConfigUpdateRequest {
     pub legal: Option<AppLegalConfigUpdateRequest>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub registration: Option<AppRegistrationConfigUpdateRequest>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub downloads: Option<AppClientDownloadsConfigUpdateRequest>,
+}
+
+#[derive(Clone, Debug, Default, Serialize)]
+pub struct AppClientDownloadsConfigUpdateRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub desktop_update_feed_url: Option<Option<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub desktop_download_url: Option<Option<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mobile_ios_url: Option<Option<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mobile_android_url: Option<Option<String>>,
 }
 
 #[derive(Clone, Debug, Default, Serialize)]

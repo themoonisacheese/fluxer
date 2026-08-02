@@ -95,11 +95,23 @@ export interface InstanceAppRegistration {
 	collect_date_of_birth: boolean;
 }
 
+export interface InstanceClientDownloads {
+	/** Base URL for the desktop update feed (Velopack/electron-updater dir). null = mainline per release channel. */
+	desktop_update_feed_url: string | null;
+	/** Landing page where users download the desktop app. null = mainline per release channel. */
+	desktop_download_url: string | null;
+	/** App Store (iOS) listing URL. null = hide/no link. */
+	mobile_ios_url: string | null;
+	/** Google Play (Android) listing URL. null = hide/no link. */
+	mobile_android_url: string | null;
+}
+
 export interface InstanceAppPublic {
 	branding: InstanceBranding;
 	setup: InstanceSetup;
 	legal: InstanceLegal;
 	registration: InstanceAppRegistration;
+	downloads: InstanceClientDownloads;
 }
 
 export interface InstanceDiscoveryResponse {

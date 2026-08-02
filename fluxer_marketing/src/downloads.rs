@@ -36,9 +36,18 @@ pub struct LatestVersionFile {
     pub checksum_url: Option<String>,
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct InstanceClientDownloadsConfig {
+    pub desktop_update_feed_url: Option<String>,
+    pub desktop_download_url: Option<String>,
+    pub mobile_ios_url: Option<String>,
+    pub mobile_android_url: Option<String>,
+}
+
 #[derive(Clone)]
 pub struct LatestVersionsCache {
     entries: Cache<String, LatestDesktopVersions>,
+    client_downloads: Cache<(), InstanceClientDownloadsConfig>,
 }
 
 impl LatestVersionsCache {
@@ -48,6 +57,10 @@ impl LatestVersionsCache {
                 .max_capacity(8)
                 .time_to_live(CACHE_TTL)
                 .build(),
+            client_downloads: Cache::builder()
+                .max_capacity(1)
+                .time_to_live(CACHE_TTL)
+                .build(),
         }
     }
 }
@@ -55,6 +68,70 @@ impl LatestVersionsCache {
 impl Default for LatestVersionsCache {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+pub async fn fetch_client_downloads_cached(
+    cache: &LatestVersionsCache,
+    client: &reqwest::Client,
+    api_endpoint: &str,
+) -> InstanceClientDownloadsConfig {
+    if let Some(cached) = cache.client_downloads.get(&()).await {
+        return cached;
+    }
+    let fresh = fetch_client_downloads(client, api_endpoint).await;
+    cache.client_downloads.insert((), fresh.clone()).await;
+    fresh
+}
+
+pub async fn fetch_client_downloads(
+    client: &reqwest::Client,
+    api_endpoint: &str,
+) -> InstanceClientDownloadsConfig {
+    let url = format!(
+        "{}/.well-known/fluxer",
+        api_endpoint.trim_end_matches('/')
+    );
+    let response = match client
+        .get(url)
+        .timeout(FETCH_TIMEOUT)
+        .header(reqwest::header::ACCEPT, "application/json")
+        .send()
+        .await
+    {
+        Ok(response) => response,
+        Err(_) => return InstanceClientDownloadsConfig::default(),
+    };
+    if !response.status().is_success() {
+        return InstanceClientDownloadsConfig::default();
+    }
+    let body = match response.bytes().await {
+        Ok(body) => body,
+        Err(_) => return InstanceClientDownloadsConfig::default(),
+    };
+    if body.is_empty() {
+        return InstanceClientDownloadsConfig::default();
+    }
+    let payload: serde_json::Value = match serde_json::from_slice(&body) {
+        Ok(payload) => payload,
+        Err(_) => return InstanceClientDownloadsConfig::default(),
+    };
+    let downloads = payload.get("app_public").and_then(|value| value.get("downloads"));
+    let Some(downloads) = downloads else {
+        return InstanceClientDownloadsConfig::default();
+    };
+    let get_string = |key: &str| -> Option<String> {
+        downloads
+            .get(key)
+            .and_then(serde_json::Value::as_str)
+            .filter(|value| !value.trim().is_empty())
+            .map(|value| value.trim().to_owned())
+    };
+    InstanceClientDownloadsConfig {
+        desktop_update_feed_url: get_string("desktop_update_feed_url"),
+        desktop_download_url: get_string("desktop_download_url"),
+        mobile_ios_url: get_string("mobile_ios_url"),
+        mobile_android_url: get_string("mobile_android_url"),
     }
 }
 

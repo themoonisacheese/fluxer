@@ -12536,9 +12536,19 @@
 								"type": "object",
 								"properties": {"collect_date_of_birth": {"type": "boolean"}},
 								"required": ["collect_date_of_birth"]
+							},
+							"downloads": {
+								"type": "object",
+								"properties": {
+									"desktop_update_feed_url": {"nullable": true, "type": "string"},
+									"desktop_download_url": {"nullable": true, "type": "string"},
+									"mobile_ios_url": {"nullable": true, "type": "string"},
+									"mobile_android_url": {"nullable": true, "type": "string"}
+								},
+								"required": ["desktop_update_feed_url", "desktop_download_url", "mobile_ios_url", "mobile_android_url"]
 							}
 						},
-						"required": ["branding", "setup", "legal", "registration"]
+						"required": ["branding", "setup", "legal", "registration", "downloads"]
 					},
 					"policy": {
 						"type": "object",
@@ -12575,7 +12585,9 @@
 									"bluesky": {"type": "boolean"}
 								},
 								"required": ["gif", "youtube", "bluesky"]
-							}
+							},
+							"welcome_dm_enabled": {"type": "boolean"},
+							"welcome_dm_content": {"nullable": true, "type": "string"}
 						},
 						"required": [
 							"single_community_enabled",
@@ -12586,7 +12598,9 @@
 							"premium_mode",
 							"services",
 							"services_resolved",
-							"services_available"
+							"services_available",
+							"welcome_dm_enabled",
+							"welcome_dm_content"
 						]
 					},
 					"integrations": {
@@ -12972,6 +12986,16 @@
 								"nullable": true,
 								"type": "object",
 								"properties": {"collect_date_of_birth": {"type": "boolean"}}
+							},
+							"downloads": {
+								"nullable": true,
+								"type": "object",
+								"properties": {
+									"desktop_update_feed_url": {"nullable": true, "type": "string", "maxLength": 2048},
+									"desktop_download_url": {"nullable": true, "type": "string", "maxLength": 2048},
+									"mobile_ios_url": {"nullable": true, "type": "string", "maxLength": 2048},
+									"mobile_android_url": {"nullable": true, "type": "string", "maxLength": 2048}
+								}
 							}
 						}
 					},
@@ -13113,7 +13137,9 @@
 									"youtube_enabled": {"nullable": true, "type": "boolean"},
 									"bluesky_enabled": {"nullable": true, "type": "boolean"}
 								}
-							}
+							},
+							"welcome_dm_enabled": {"type": "boolean"},
+							"welcome_dm_content": {"nullable": true, "type": "string", "maxLength": 4000}
 						}
 					}
 				}

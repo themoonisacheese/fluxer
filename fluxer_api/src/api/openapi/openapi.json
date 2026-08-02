@@ -25008,9 +25008,35 @@
 							"public_vapid_key": {
 								"anyOf": [{"type": "string"}, {"type": "null"}],
 								"description": "VAPID public key for web push notifications"
+							},
+							"android_fcm": {
+								"anyOf": [
+									{
+										"type": "object",
+										"properties": {
+											"app_id": {"type": "string", "description": "Firebase App ID for the Android FCM push provider"},
+											"project_id": {
+												"type": "string",
+												"description": "Firebase project ID (also the FCM sender/topic prefix)"
+											},
+											"api_key": {
+												"type": "string",
+												"description": "Firebase Web API key used for Android FCM registration"
+											},
+											"messaging_sender_id": {
+												"type": "string",
+												"description": "Firebase Sender ID for the Android FCM push provider"
+											},
+											"storage_bucket": {"type": "string", "description": "Firebase Storage bucket URL"}
+										},
+										"required": ["app_id", "project_id", "api_key", "messaging_sender_id", "storage_bucket"]
+									},
+									{"type": "null"}
+								],
+								"description": "Android app FCM credentials for push notifications, or null if not configured"
 							}
 						},
-						"required": ["public_vapid_key"],
+						"required": ["public_vapid_key", "android_fcm"],
 						"description": "Push notification configuration"
 					},
 					"app_public": {
@@ -25096,9 +25122,32 @@
 								},
 								"required": ["collect_date_of_birth"],
 								"description": "Public registration field collection policy"
+							},
+							"downloads": {
+								"type": "object",
+								"properties": {
+									"desktop_update_feed_url": {
+										"anyOf": [{"type": "string"}, {"type": "null"}],
+										"description": "Base URL prefix for the desktop app update feed (Velopack / electron-updater static directory). Mirrors mainline /dl/desktop: clients append /{channel}/{platform}/{arch}. Null means clients use the mainline feed for their release channel."
+									},
+									"desktop_download_url": {
+										"anyOf": [{"type": "string"}, {"type": "null"}],
+										"description": "Landing page where users can download the desktop app. Null means use the mainline download page."
+									},
+									"mobile_ios_url": {
+										"anyOf": [{"type": "string"}, {"type": "null"}],
+										"description": "App Store listing URL for the iOS mobile app. Null means no App Store link is shown."
+									},
+									"mobile_android_url": {
+										"anyOf": [{"type": "string"}, {"type": "null"}],
+										"description": "Google Play listing URL for the Android mobile app. Null means no Google Play link is shown."
+									}
+								},
+								"required": ["desktop_update_feed_url", "desktop_download_url", "mobile_ios_url", "mobile_android_url"],
+								"description": "Client download and update-feed URLs. Null fields mean clients fall back to the mainline Fluxer distribution for the active release channel."
 							}
 						},
-						"required": ["branding", "setup", "legal", "registration"],
+						"required": ["branding", "setup", "legal", "registration", "downloads"],
 						"description": "Public application configuration for client-side features"
 					}
 				},

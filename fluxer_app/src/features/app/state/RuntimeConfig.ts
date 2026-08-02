@@ -124,6 +124,12 @@ export const DEFAULT_APP_PUBLIC_CONFIG: InstanceAppPublic = {
 	registration: {
 		collect_date_of_birth: true,
 	},
+	downloads: {
+		desktop_update_feed_url: null,
+		desktop_download_url: null,
+		mobile_ios_url: null,
+		mobile_android_url: null,
+	},
 };
 
 export function normalizeInstanceRegistration(registration?: InstanceRegistration | null): InstanceRegistration {
@@ -239,6 +245,10 @@ export function normalizeAppPublicConfig(appPublic?: Partial<InstanceAppPublic> 
 		registration: {
 			...DEFAULT_APP_PUBLIC_CONFIG.registration,
 			...(appPublic?.registration ?? {}),
+		},
+		downloads: {
+			...DEFAULT_APP_PUBLIC_CONFIG.downloads,
+			...(appPublic?.downloads ?? {}),
 		},
 	};
 }
@@ -407,6 +417,7 @@ class RuntimeConfig {
 			},
 			legal: config.app_public.legal,
 			registration: config.app_public.registration,
+			downloads: config.app_public.downloads,
 		});
 		runInAction(() => {
 			this.features = {

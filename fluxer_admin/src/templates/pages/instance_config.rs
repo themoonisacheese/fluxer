@@ -2,10 +2,11 @@
 
 use crate::{
     api::types::{
-        AppPublicConfigResponse, GatewayRolloutConfigResponse, InstanceConfigResponse,
-        InstanceIntegrationsResponse, InstanceMediaResponse, InstancePolicyResponse,
-        InstanceRegistrationResponse, LimitConfigResponse, PendingRegistrationResponse,
-        RegistrationUrlResponse, SsoConfigResponse,
+        AppClientDownloadsConfigResponse, AppPublicConfigResponse,
+        GatewayRolloutConfigResponse, InstanceConfigResponse, InstanceIntegrationsResponse,
+        InstanceMediaResponse, InstancePolicyResponse, InstanceRegistrationResponse,
+        LimitConfigResponse, PendingRegistrationResponse, RegistrationUrlResponse,
+        SsoConfigResponse,
     },
     config::AdminConfig,
     middleware::auth::AuthContext,
@@ -91,6 +92,17 @@ pub fn instance_config_page(
                         },
                     ))
                 }
+                (config_group(
+                    "Client distribution",
+                    "Where the desktop and mobile apps point for updates and downloads. Choose mainline (default) or custom URLs for your own builds.",
+                    html! {
+                        (app_client_downloads_config_section(
+                            base,
+                            csrf_token,
+                            &instance_config.app_public.downloads,
+                        ))
+                    },
+                ))
                 (config_group(
                     "Access & accounts",
                     "Who can sign in and create accounts on this instance.",
@@ -867,6 +879,137 @@ fn app_public_config_section(
                             }))
                         }
                     }
+                }
+            }
+        },
+    )
+}
+
+fn app_client_downloads_config_section(
+    base: &str,
+    csrf_token: &str,
+    downloads: &AppClientDownloadsConfigResponse,
+) -> Markup {
+    let is_custom = |value: &Option<String>| !value.is_none_or(String::is_empty);
+    section_card_with_description(
+        "Client Distribution",
+        "Controls where the desktop and mobile clients look for updates and install links. \
+         Mainline points clients at the official Fluxer distribution for the active release channel; \
+         Custom points them at URLs you control (your own build host, update feed, or app-store listings).",
+        html! {
+            div class="space-y-8" {
+                form method="post" action={(base) "/instance-config?action=update_app_downloads"} {
+                    (csrf_input(csrf_token))
+                    div class="space-y-6" {
+                        // Desktop app
+                        div class="rounded-xl border border-neutral-200 p-4 space-y-4" {
+                            h3 class="text-sm font-semibold text-neutral-900" { "Desktop app" }
+                            div class="grid grid-cols-1 gap-4 sm:grid-cols-2" {
+                                (select_input(
+                                    "app_desktop_update_feed_mode",
+                                    "Update feed source",
+                                    &[("mainline", "Mainline"), ("custom", "Custom")],
+                                    if is_custom(&downloads.desktop_update_feed_url) { "custom" } else { "mainline" },
+                                ))
+                                (select_input(
+                                    "app_desktop_download_mode",
+                                    "Download page source",
+                                    &[("mainline", "Mainline"), ("custom", "Custom")],
+                                    if is_custom(&downloads.desktop_download_url) { "custom" } else { "mainline" },
+                                ))
+                            }
+                            div class="grid grid-cols-1 gap-4 sm:grid-cols-2" {
+                                (text_input(
+                                    "app_desktop_update_feed_url",
+                                    "Custom update feed URL",
+                                    downloads.desktop_update_feed_url.as_deref().unwrap_or(""),
+                                    "https://updates.example.com/fluxer",
+                                ))
+                                (text_input(
+                                    "app_desktop_download_url",
+                                    "Custom download page URL",
+                                    downloads.desktop_download_url.as_deref().unwrap_or(""),
+                                    "https://example.com/fluxer/download",
+                                ))
+                            }
+                            p class="text-xs text-neutral-500" {
+                                "The update feed is the base URL clients query for new versions \
+                                 (Velopack / electron-updater static directory). It must expose the \
+                                 same layout as mainline: /{channel}/{platform}/{arch}/latest"
+                            }
+                        }
+                        // Mobile apps
+                        div class="rounded-xl border border-neutral-200 p-4 space-y-4" {
+                            h3 class="text-sm font-semibold text-neutral-900" { "Mobile apps" }
+                            div class="grid grid-cols-1 gap-4 sm:grid-cols-2" {
+                                (select_input(
+                                    "app_mobile_ios_mode",
+                                    "iOS listing source",
+                                    &[("mainline", "Mainline"), ("custom", "Custom")],
+                                    if is_custom(&downloads.mobile_ios_url) { "custom" } else { "mainline" },
+                                ))
+                                (select_input(
+                                    "app_mobile_android_mode",
+                                    "Android listing source",
+                                    &[("mainline", "Mainline"), ("custom", "Custom")],
+                                    if is_custom(&downloads.mobile_android_url) { "custom" } else { "mainline" },
+                                ))
+                            }
+                            div class="grid grid-cols-1 gap-4 sm:grid-cols-2" {
+                                (text_input(
+                                    "app_mobile_ios_url",
+                                    "Custom iOS URL (App Store)",
+                                    downloads.mobile_ios_url.as_deref().unwrap_or(""),
+                                    "https://apps.apple.com/app/id123456789",
+                                ))
+                                (text_input(
+                                    "app_mobile_android_url",
+                                    "Custom Android URL (Google Play)",
+                                    downloads.mobile_android_url.as_deref().unwrap_or(""),
+                                    "https://play.google.com/store/apps/details?id=app.fluxer.client",
+                                ))
+                            }
+                            p class="text-xs text-neutral-500" {
+                                "When set, the web app and marketing site use these links for \
+                                 'get the app' prompts. Mainline shows the official store listings."
+                            }
+                        }
+                        // Help
+                        details class="rounded-xl border border-blue-100 bg-blue-50/50 p-4" {
+                            summary class="cursor-pointer font-medium text-blue-700 text-sm transition-colors hover:text-blue-900" {
+                                "What do I need to set up for custom updates?"
+                            }
+                            div class="mt-3 space-y-3 text-sm leading-relaxed text-neutral-700" {
+                                p {
+                                    "For the " strong { "desktop app" } ", you need two things:"
+                                }
+                                ul class="list-disc space-y-1 pl-5" {
+                                    li {
+                                        "An " strong { "update feed" } " server that mirrors the mainline \
+                                         directory layout. For Windows/Linux the client uses " code { "Velopack" } ", \
+                                         for macOS " code { "electron-updater" } ". Both expect a static HTTP \
+                                         directory with a " code { "latest" } " JSON manifest plus the release \
+                                         artifacts (and checksums). See the mainline feed at " code { "https://api.fluxer.app/dl/desktop/{channel}/{platform}/{arch}/latest" } " for the exact shape."
+                                    }
+                                    li {
+                                        "A " strong { "download page" } " (any HTTPS URL) that hosts your \
+                                         installer links — this is where 'get the desktop app' buttons point."
+                                    }
+                                }
+                                p {
+                                    "For the " strong { "mobile apps" } ", provide the App Store / Google Play \
+                                     listing URLs for your own app builds. Leave blank to keep pointing at the \
+                                     official listings."
+                                }
+                                p {
+                                    "Clients resolve these settings from the instance discovery document " code { "/.well-known/fluxer" } ", so changes apply to existing installs without a client update. Null values fall back to mainline."
+                                }
+                            }
+                        }
+                    }
+                    (form_actions(html! {
+                        (submit_button("Save Client Distribution"))
+                    }))
                 }
             }
         },

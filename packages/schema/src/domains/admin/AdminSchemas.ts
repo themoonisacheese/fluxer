@@ -474,6 +474,12 @@ const AppPublicConfigResponse = z.object({
 	registration: z.object({
 		collect_date_of_birth: z.boolean(),
 	}),
+	downloads: z.object({
+		desktop_update_feed_url: z.string().nullable(),
+		desktop_download_url: z.string().nullable(),
+		mobile_ios_url: z.string().nullable(),
+		mobile_android_url: z.string().nullable(),
+	}),
 });
 
 const AppPublicConfigUpdateRequest = z.object({
@@ -502,6 +508,14 @@ const AppPublicConfigUpdateRequest = z.object({
 	registration: z
 		.object({
 			collect_date_of_birth: z.boolean().optional(),
+		})
+		.nullish(),
+	downloads: z
+		.object({
+			desktop_update_feed_url: z.string().trim().max(2048).nullish(),
+			desktop_download_url: z.string().trim().max(2048).nullish(),
+			mobile_ios_url: z.string().trim().max(2048).nullish(),
+			mobile_android_url: z.string().trim().max(2048).nullish(),
 		})
 		.nullish(),
 });

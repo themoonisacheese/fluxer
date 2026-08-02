@@ -281,6 +281,17 @@ export function InstanceConfigAdminController(app: HonoApp) {
 								collect_date_of_birth: readOptionalField(data.app_public.registration, 'collect_date_of_birth'),
 							})
 						: undefined,
+					downloads: data.app_public.downloads
+						? omitUndefinedFields({
+								desktop_update_feed_url: readOptionalField(
+									data.app_public.downloads,
+									'desktop_update_feed_url',
+								),
+								desktop_download_url: readOptionalField(data.app_public.downloads, 'desktop_download_url'),
+								mobile_ios_url: readOptionalField(data.app_public.downloads, 'mobile_ios_url'),
+								mobile_android_url: readOptionalField(data.app_public.downloads, 'mobile_android_url'),
+							})
+						: undefined,
 				});
 			}
 			if (data.integrations) {

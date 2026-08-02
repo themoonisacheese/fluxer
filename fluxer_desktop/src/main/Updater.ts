@@ -3,6 +3,7 @@
 import {createRequire} from 'node:module';
 import {BUILD_CHANNEL} from '@electron/common/BuildChannel';
 import {DESKTOP_BUILD_VARIANT} from '@electron/common/BuildVariant';
+import {getAppUrl, getCustomAppUrl} from '@electron/common/DesktopConfig';
 import {isPortableMode} from '@electron/common/UserDataPath';
 import {destroyDesktopTray} from '@electron/main/DesktopTray';
 import {isFlatpakRuntime} from '@electron/main/LinuxSandbox';
@@ -74,9 +75,93 @@ const DESKTOP_DOWNLOAD_ARCH = getDesktopDownloadArch(process.arch);
 const UPDATE_API_ENDPOINT = BUILD_CHANNEL === 'canary' ? 'https://api.canary.fluxer.app' : 'https://api.fluxer.app';
 const UPDATE_VARIANT_SEGMENT =
 	process.platform === 'win32' && DESKTOP_BUILD_VARIANT !== 'default' ? `/${DESKTOP_BUILD_VARIANT}` : '';
-const UPDATE_BASE_URL = `${UPDATE_API_ENDPOINT}/dl/desktop/${BUILD_CHANNEL}/${process.platform}/${DESKTOP_DOWNLOAD_ARCH}${UPDATE_VARIANT_SEGMENT}`;
-const DOWNLOAD_PAGE_URL =
+const DEFAULT_UPDATE_BASE_URL = `${UPDATE_API_ENDPOINT}/dl/desktop/${BUILD_CHANNEL}/${process.platform}/${DESKTOP_DOWNLOAD_ARCH}${UPDATE_VARIANT_SEGMENT}`;
+const DEFAULT_DOWNLOAD_PAGE_URL =
 	BUILD_CHANNEL === 'canary' ? 'https://canary.fluxer.app/download' : 'https://fluxer.app/download';
+
+// Resolved client-distribution settings from the instance discovery document
+// (app_public.downloads). When an instance admin configures custom URLs on the
+// connected instance, the desktop client uses those instead of the mainline
+// defaults compiled into the build. Set null when the instance uses mainline.
+let resolvedUpdateBaseUrl: string | null = null;
+let resolvedDownloadPageUrl: string | null = null;
+let resolutionAttempted = false;
+
+async function resolveClientDistribution(): Promise<void> {
+	if (resolutionAttempted) {
+		return;
+	}
+	resolutionAttempted = true;
+	const instanceUrl = getCustomAppUrl() ?? getAppUrl();
+	if (!instanceUrl) {
+		return;
+	}
+	try {
+		const fetchDiscovery = async (path: string): Promise<unknown> => {
+			const url = new URL(path, instanceUrl).toString();
+			const controller = new AbortController();
+			const timeout = setTimeout(() => controller.abort(), 5000);
+			try {
+				const response = await fetch(url, {
+					method: 'GET',
+					headers: {Accept: 'application/json'},
+					signal: controller.signal,
+				});
+				if (!response.ok) {
+					throw new Error(`HTTP ${response.status}`);
+				}
+				const contentType = response.headers.get('content-type') ?? '';
+				if (!contentType.includes('application/json')) {
+					throw new Error('Expected JSON, got non-JSON response');
+				}
+				return (await response.json()) as unknown;
+			} finally {
+				clearTimeout(timeout);
+			}
+		};
+		let payload: unknown;
+		try {
+			payload = await fetchDiscovery('/.well-known/fluxer');
+		} catch {
+			// Self-hosted instances may expose discovery under /api like the
+			// main instance validation does.
+			payload = await fetchDiscovery('/api/.well-known/fluxer');
+		}
+		if (!isRecord(payload)) {
+			throw new Error('Malformed discovery document');
+		}
+		const appPublic = isRecord((payload as {app_public?: unknown}).app_public)
+			? (payload as {app_public: Record<string, unknown>}).app_public
+			: null;
+		const downloads = appPublic && isRecord(appPublic.downloads) ? appPublic.downloads : null;
+		if (!downloads) {
+			return;
+		}
+		const feed = downloads.desktop_update_feed_url;
+		const downloadPage = downloads.desktop_download_url;
+		if (typeof feed === 'string' && feed.trim().length > 0) {
+			resolvedUpdateBaseUrl = `${feed.trim().replace(/\/+$/u, '')}/${BUILD_CHANNEL}/${process.platform}/${DESKTOP_DOWNLOAD_ARCH}${UPDATE_VARIANT_SEGMENT}`;
+		}
+		if (typeof downloadPage === 'string' && downloadPage.trim().length > 0) {
+			resolvedDownloadPageUrl = downloadPage.trim();
+		}
+		log.info(
+			'Resolved client distribution from instance discovery',
+			resolvedUpdateBaseUrl ? {updateBaseUrl: resolvedUpdateBaseUrl} : {updateBaseUrl: '(mainline)'},
+			resolvedDownloadPageUrl ? {downloadPageUrl: resolvedDownloadPageUrl} : {downloadPageUrl: '(mainline)'},
+		);
+	} catch (error) {
+		log.warn('Failed to resolve client distribution from instance discovery; using build defaults', error);
+	}
+}
+
+function getUpdateBaseUrl(): string {
+	return resolvedUpdateBaseUrl ?? DEFAULT_UPDATE_BASE_URL;
+}
+
+function getDownloadPageUrl(): string {
+	return resolvedDownloadPageUrl ?? DEFAULT_DOWNLOAD_PAGE_URL;
+}
 
 let lastContext: UpdaterContext = 'background';
 let pendingVelopackUpdate: UpdateInfo | null = null;
@@ -137,7 +222,7 @@ function getVelopackUpdateSize(update: UpdateInfo): number | null {
 
 function createVelopackUpdateManager() {
 	const {UpdateManager} = requireModule('velopack') as typeof import('velopack');
-	return new UpdateManager(UPDATE_BASE_URL);
+	return new UpdateManager(getUpdateBaseUrl());
 }
 
 async function checkVelopackForUpdates(
@@ -317,7 +402,7 @@ function registerElectronUpdater(getMainWindow: () => BrowserWindow | null): voi
 	updateElectronApp({
 		updateSource: {
 			type: UpdateSourceType.StaticStorage,
-			baseUrl: UPDATE_BASE_URL,
+			baseUrl: getUpdateBaseUrl(),
 		},
 		updateInterval: '12 hours',
 		logger: log,
@@ -473,7 +558,7 @@ function isLinuxManualDesktopFormat(format: ManualDesktopFormat): format is Linu
 }
 
 function buildManualLatestDownloadUrl(format: ManualDesktopFormat): string {
-	return `${UPDATE_BASE_URL}/latest/${format}`;
+	return `${getUpdateBaseUrl()}/latest/${format}`;
 }
 
 function getModernProductName(): string {
@@ -515,7 +600,7 @@ function getManualDownloadUrl(info: ManualLatestInfo): string {
 			return url;
 		}
 	}
-	return DOWNLOAD_PAGE_URL;
+	return getDownloadPageUrl();
 }
 
 async function fetchManualLatest(options: {forceRefresh?: boolean} = {}): Promise<ManualLatestInfo> {
@@ -523,7 +608,7 @@ async function fetchManualLatest(options: {forceRefresh?: boolean} = {}): Promis
 	if (!options.forceRefresh && manualLatestCache && now - manualLatestCache.at < MANUAL_CACHE_TTL_MS) {
 		return manualLatestCache.info;
 	}
-	const response = await fetch(`${UPDATE_BASE_URL}/latest`, {
+	const response = await fetch(`${getUpdateBaseUrl()}/latest`, {
 		cache: 'no-store',
 		headers: {
 			Accept: 'application/json',
@@ -582,7 +667,7 @@ function registerManualUpdater(
 				type: 'unsupported',
 				context,
 				reason,
-				...(reason === 'unpackaged' ? {downloadUrl: DOWNLOAD_PAGE_URL} : {}),
+				...(reason === 'unpackaged' ? {downloadUrl: getDownloadPageUrl()} : {}),
 			});
 			return;
 		}
@@ -593,7 +678,7 @@ function registerManualUpdater(
 			type: 'unsupported',
 			context,
 			reason,
-			...(reason === 'managed-package' ? {} : {downloadUrl: DOWNLOAD_PAGE_URL}),
+			...(reason === 'managed-package' ? {} : {downloadUrl: getDownloadPageUrl()}),
 		});
 	});
 	ipcMain.handle('updater-install', async () => {
@@ -602,6 +687,10 @@ function registerManualUpdater(
 }
 
 export function registerUpdater(getMainWindow: () => BrowserWindow | null) {
+	// Resolve instance-configured client distribution (custom update feed /
+	// download page) before the first check. Best-effort; falls back to
+	// build-time mainline defaults on any error.
+	void resolveClientDistribution();
 	if (!app.isPackaged) {
 		registerManualUpdater(getMainWindow, 'unpackaged');
 		return;
@@ -623,4 +712,12 @@ export function registerUpdater(getMainWindow: () => BrowserWindow | null) {
 		return;
 	}
 	registerManualUpdater(getMainWindow, 'platform');
+}
+
+/** Re-resolve client distribution after the user switches instances. */
+export function reloadClientDistribution(): void {
+	resolvedUpdateBaseUrl = null;
+	resolvedDownloadPageUrl = null;
+	resolutionAttempted = false;
+	void resolveClientDistribution();
 }

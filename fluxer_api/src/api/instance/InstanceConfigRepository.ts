@@ -59,6 +59,13 @@ export interface InstanceBrandingConfig {
 	theme_color: string | null;
 }
 
+export interface InstanceClientDownloadsConfig {
+	desktop_update_feed_url: string | null;
+	desktop_download_url: string | null;
+	mobile_ios_url: string | null;
+	mobile_android_url: string | null;
+}
+
 interface InstanceAppPublicConfig {
 	branding: InstanceBrandingConfig;
 	setup: {
@@ -71,6 +78,7 @@ interface InstanceAppPublicConfig {
 	registration: {
 		collect_date_of_birth: boolean;
 	};
+	downloads: InstanceClientDownloadsConfig;
 }
 
 export type InstancePremiumMode = 'mirror' | 'everyone';
@@ -358,6 +366,12 @@ function getDefaultAppPublicConfig(): InstanceAppPublicConfig {
 		registration: {
 			collect_date_of_birth: !Config.instance.selfHosted,
 		},
+		downloads: {
+			desktop_update_feed_url: null,
+			desktop_download_url: null,
+			mobile_ios_url: null,
+			mobile_android_url: null,
+		},
 	};
 }
 
@@ -370,6 +384,7 @@ function normalizeAppPublicConfig(value: unknown): InstanceAppPublicConfig {
 	const setup = isJsonRecord(value.setup) ? value.setup : {};
 	const legal = isJsonRecord(value.legal) ? value.legal : {};
 	const registration = isJsonRecord(value.registration) ? value.registration : {};
+	const downloads = isJsonRecord(value.downloads) ? value.downloads : {};
 	return {
 		branding: {
 			product_name: normalizePublicString(branding.product_name) ?? defaults.branding.product_name,
@@ -392,6 +407,24 @@ function normalizeAppPublicConfig(value: unknown): InstanceAppPublicConfig {
 				typeof registration.collect_date_of_birth === 'boolean'
 					? registration.collect_date_of_birth
 					: defaults.registration.collect_date_of_birth,
+		},
+		downloads: {
+			desktop_update_feed_url: normalizeOptionalPublicString(
+				downloads,
+				'desktop_update_feed_url',
+				defaults.downloads.desktop_update_feed_url,
+			),
+			desktop_download_url: normalizeOptionalPublicString(
+				downloads,
+				'desktop_download_url',
+				defaults.downloads.desktop_download_url,
+			),
+			mobile_ios_url: normalizeOptionalPublicString(downloads, 'mobile_ios_url', defaults.downloads.mobile_ios_url),
+			mobile_android_url: normalizeOptionalPublicString(
+				downloads,
+				'mobile_android_url',
+				defaults.downloads.mobile_android_url,
+			),
 		},
 	};
 }
@@ -1062,6 +1095,7 @@ export class InstanceConfigRepository {
 		setup?: Partial<InstanceAppPublicConfig['setup']>;
 		legal?: Partial<InstanceAppPublicConfig['legal']>;
 		registration?: Partial<InstanceAppPublicConfig['registration']>;
+		downloads?: Partial<InstanceClientDownloadsConfig>;
 	}): Promise<InstanceAppPublicConfig> {
 		const current = await this.getAppPublicConfig();
 		const next = normalizeAppPublicConfig({
@@ -1080,6 +1114,10 @@ export class InstanceConfigRepository {
 			registration: {
 				...current.registration,
 				...(config.registration ?? {}),
+			},
+			downloads: {
+				...current.downloads,
+				...(config.downloads ?? {}),
 			},
 		});
 		await this.setConfig(APP_PUBLIC_CONFIG_KEY, JSON.stringify(next));

@@ -4,20 +4,20 @@ use crate::{
     api::{
         client::AdminApiClient,
         types::{
-            AppBrandingConfigUpdateRequest, AppLegalConfigUpdateRequest,
-            AppPublicConfigUpdateRequest, AppRegistrationConfigUpdateRequest,
-            AppSetupConfigUpdateRequest, CreateRegistrationUrlRequest,
-            GatewayRolloutConfigUpdateRequest, GatewayRolloutMode,
-            InstanceAttachmentDecayUpdateRequest, InstanceBlueskyIntegrationUpdateRequest,
-            InstanceBlueskyKeyIntegrationUpdateRequest, InstanceCaptchaIntegrationUpdateRequest,
-            InstanceConfigUpdateRequest, InstanceEmailIntegrationUpdateRequest,
-            InstanceEmailSmtpIntegrationUpdateRequest, InstanceEmailSmtpTestRequest,
-            InstanceGifIntegrationUpdateRequest, InstanceIntegrationsUpdateRequest,
-            InstanceMediaUpdateRequest, InstancePolicyUpdateRequest,
-            InstanceRegistrationConfigUpdateRequest, InstanceServicesUpdateRequest,
-            InstanceYoutubeIntegrationUpdateRequest, LimitConfigUpdateRequest, LimitRule,
-            LimitRuleFilters, PremiumMode, RegistrationMode, SsoConfigUpdateRequest,
-            VoiceE2eeScope,
+            AppBrandingConfigUpdateRequest, AppClientDownloadsConfigUpdateRequest,
+            AppLegalConfigUpdateRequest, AppPublicConfigUpdateRequest,
+            AppRegistrationConfigUpdateRequest, AppSetupConfigUpdateRequest,
+            CreateRegistrationUrlRequest, GatewayRolloutConfigUpdateRequest,
+            GatewayRolloutMode, InstanceAttachmentDecayUpdateRequest,
+            InstanceBlueskyIntegrationUpdateRequest, InstanceBlueskyKeyIntegrationUpdateRequest,
+            InstanceCaptchaIntegrationUpdateRequest, InstanceConfigUpdateRequest,
+            InstanceEmailIntegrationUpdateRequest, InstanceEmailSmtpIntegrationUpdateRequest,
+            InstanceEmailSmtpTestRequest, InstanceGifIntegrationUpdateRequest,
+            InstanceIntegrationsUpdateRequest, InstanceMediaUpdateRequest,
+            InstancePolicyUpdateRequest, InstanceRegistrationConfigUpdateRequest,
+            InstanceServicesUpdateRequest, InstanceYoutubeIntegrationUpdateRequest,
+            LimitConfigUpdateRequest, LimitRule, LimitRuleFilters, PremiumMode,
+            RegistrationMode, SsoConfigUpdateRequest, VoiceE2eeScope,
         },
     },
     config::AdminConfig,
@@ -178,6 +178,10 @@ pub async fn instance_config_post(
         }
         "update_app_public" => {
             let update = build_app_public_update(&form);
+            instance_config_result(client.update_instance_config(&update).await)
+        }
+        "update_app_downloads" => {
+            let update = build_app_downloads_update(&form);
             instance_config_result(client.update_instance_config(&update).await)
         }
         "update_app_legal" => {
@@ -486,6 +490,40 @@ fn build_app_public_update(form: &MultiValueForm) -> InstanceConfigUpdateRequest
             }),
             legal: None,
             registration: None,
+        }),
+        policy: None,
+        integrations: None,
+        media: None,
+    }
+}
+
+fn build_app_downloads_update(form: &MultiValueForm) -> InstanceConfigUpdateRequest {
+    let optional = |key: &str| Some(form.clean(key));
+    // The mode selectors are the source of truth: "mainline" clears the custom
+    // value (back to null → clients fall back to mainline), "custom" uses the URL
+    // field if provided.
+    let field = |url_key: &str, mode_key: &str| {
+        if form.first(mode_key) == Some("custom") {
+            optional(url_key)
+        } else {
+            Some(None)
+        }
+    };
+    InstanceConfigUpdateRequest {
+        gateway_rollout: None,
+        registration: None,
+        sso: None,
+        app_public: Some(AppPublicConfigUpdateRequest {
+            branding: None,
+            setup: None,
+            legal: None,
+            registration: None,
+            downloads: Some(AppClientDownloadsConfigUpdateRequest {
+                desktop_update_feed_url: field("app_desktop_update_feed_url", "app_desktop_update_feed_mode"),
+                desktop_download_url: field("app_desktop_download_url", "app_desktop_download_mode"),
+                mobile_ios_url: field("app_mobile_ios_url", "app_mobile_ios_mode"),
+                mobile_android_url: field("app_mobile_android_url", "app_mobile_android_mode"),
+            }),
         }),
         policy: None,
         integrations: None,

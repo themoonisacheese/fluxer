@@ -23,6 +23,27 @@ const LimitConfigResponse = z.object({
 	defaultsHash: z.string().describe('Hash of the default limit values for cache invalidation'),
 });
 
+const InstanceClientDownloads = z.object({
+	desktop_update_feed_url: z
+		.string()
+		.nullable()
+		.describe(
+			'Base URL prefix for the desktop app update feed (Velopack / electron-updater static directory). Mirrors mainline /dl/desktop: clients append /{channel}/{platform}/{arch}. Null means clients use the mainline feed for their release channel.',
+		),
+	desktop_download_url: z
+		.string()
+		.nullable()
+		.describe('Landing page where users can download the desktop app. Null means use the mainline download page.'),
+	mobile_ios_url: z
+		.string()
+		.nullable()
+		.describe('App Store listing URL for the iOS mobile app. Null means no App Store link is shown.'),
+	mobile_android_url: z
+		.string()
+		.nullable()
+		.describe('Google Play listing URL for the Android mobile app. Null means no Google Play link is shown.'),
+});
+
 const AppPublicConfigResponse = z.object({
 	branding: z
 		.object({
@@ -52,6 +73,9 @@ const AppPublicConfigResponse = z.object({
 			collect_date_of_birth: z.boolean().describe('Whether public registration collects and validates date of birth'),
 		})
 		.describe('Public registration field collection policy'),
+	downloads: InstanceClientDownloads.describe(
+		'Client download and update-feed URLs. Null fields mean clients fall back to the mainline Fluxer distribution for the active release channel.',
+	),
 });
 
 export const WellKnownFluxerResponse = z.object({

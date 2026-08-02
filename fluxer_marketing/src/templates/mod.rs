@@ -6,7 +6,7 @@ use crate::{
         POLICIES, Policy, get_help_category, render_markdown_with_copy_label,
         render_markdown_with_headings_and_copy_label,
     },
-    downloads::{LatestDesktopVersions, LatestVersionInfo, format_latest_version_line},
+    downloads::{InstanceClientDownloadsConfig, LatestDesktopVersions, LatestVersionInfo, format_latest_version_line},
     i18n::{MarketingI18n, MarketingMessageDescriptor, descriptors::*},
     request_context::{Architecture, Platform, RequestContext},
 };
@@ -125,6 +125,7 @@ pub fn download_page(
     i18n: &MarketingI18n,
     ctx: &RequestContext,
     latest_versions: &LatestDesktopVersions,
+    client_downloads: &InstanceClientDownloadsConfig,
 ) -> Markup {
     layout(
         i18n,
@@ -176,6 +177,12 @@ pub fn download_page(
                         }
                         h3 class="mt-4 font-semibold text-gray-900 text-lg" { (tr(i18n, ctx, PLATFORM_SUPPORT_MOBILE_IOS_TITLE_DESCRIPTOR)) }
                         p class="mt-2 flex-1 text-sm leading-relaxed text-gray-600" { (tr(i18n, ctx, PLATFORM_SUPPORT_MOBILE_IOS_BODY_DESCRIPTOR)) }
+                        @if let Some(ios_url) = client_downloads.mobile_ios_url.as_deref() {
+                            a class="mt-5 inline-flex items-center gap-2 self-start rounded-xl bg-[#4641D9] px-5 py-3 font-medium text-sm text-white shadow-md transition-colors hover:bg-[#3832B8]" href=(ios_url) target="_blank" rel="noopener noreferrer" {
+                                (icon(Icon::Apple, "h-5 w-5"))
+                                (tr(i18n, ctx, PLATFORM_SUPPORT_MOBILE_IOS_CTA_DESCRIPTOR))
+                            }
+                        }
                     }
                     div class="relative flex flex-col rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm" {
                         div class="caption absolute top-4 right-4 rounded-full bg-[#4641D9] px-3 py-1 font-semibold text-xs text-white uppercase shadow-lg" {
@@ -186,9 +193,16 @@ pub fn download_page(
                         }
                         h3 class="mt-4 font-semibold text-gray-900 text-lg" { (tr(i18n, ctx, PLATFORM_SUPPORT_MOBILE_ANDROID_TITLE_DESCRIPTOR)) }
                         p class="mt-2 flex-1 text-sm leading-relaxed text-gray-600" { (tr(i18n, ctx, PLATFORM_SUPPORT_MOBILE_ANDROID_BODY_DESCRIPTOR)) }
-                        a class="mt-5 inline-flex items-center gap-2 self-start rounded-xl bg-[#4641D9] px-5 py-3 font-medium text-sm text-white shadow-md transition-colors hover:bg-[#3832B8]" href="https://github.com/fluxerapp/flutter_client" target="_blank" rel="noopener noreferrer" {
-                            (icon(Icon::Github, "h-5 w-5"))
-                            (tr(i18n, ctx, PLATFORM_SUPPORT_MOBILE_ANDROID_CTA_DESCRIPTOR))
+                        @if let Some(android_url) = client_downloads.mobile_android_url.as_deref() {
+                            a class="mt-5 inline-flex items-center gap-2 self-start rounded-xl bg-[#4641D9] px-5 py-3 font-medium text-sm text-white shadow-md transition-colors hover:bg-[#3832B8]" href=(android_url) target="_blank" rel="noopener noreferrer" {
+                                (icon(Icon::Android, "h-5 w-5"))
+                                (tr(i18n, ctx, PLATFORM_SUPPORT_MOBILE_ANDROID_CTA_DESCRIPTOR))
+                            }
+                        } @else {
+                            a class="mt-5 inline-flex items-center gap-2 self-start rounded-xl bg-[#4641D9] px-5 py-3 font-medium text-sm text-white shadow-md transition-colors hover:bg-[#3832B8]" href="https://github.com/fluxerapp/flutter_client" target="_blank" rel="noopener noreferrer" {
+                                (icon(Icon::Github, "h-5 w-5"))
+                                (tr(i18n, ctx, PLATFORM_SUPPORT_MOBILE_ANDROID_CTA_DESCRIPTOR))
+                            }
                         }
                     }
                 }

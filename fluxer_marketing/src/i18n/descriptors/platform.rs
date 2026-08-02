@@ -401,6 +401,14 @@ crate::marketing_message!(
 );
 
 crate::marketing_message!(
+    pub const PLATFORM_SUPPORT_MOBILE_IOS_CTA_DESCRIPTOR = {
+        key: "platform_support.mobile.ios.cta",
+        message: "View on the App Store",
+        comment: "Button or link label on the iOS app card that opens the App Store listing. Keep it short and conventional for an app-store call to action.",
+    };
+);
+
+crate::marketing_message!(
     pub const PLATFORM_SUPPORT_MOBILE_ANDROID_TITLE_DESCRIPTOR = {
         key: "platform_support.mobile.android.title",
         message: "{android} app",

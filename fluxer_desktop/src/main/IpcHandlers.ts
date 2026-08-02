@@ -81,6 +81,7 @@ import {
 import {flashWindowForAttention, stopFlashingWindow} from '@electron/main/WindowFlash';
 import {setWindowsBadgeOverlay} from '@electron/main/WindowsBadge';
 import {registerWindowsToastIpcHandlers} from '@electron/main/WindowsToast';
+import {reloadClientDistribution} from '@electron/main/Updater';
 import {app, BrowserWindow, clipboard, dialog, ipcMain, powerMonitor, shell, systemPreferences} from 'electron';
 
 interface TrayRuntimeStateUpdate {
@@ -246,6 +247,7 @@ export function registerIpcHandlers(): void {
 		pendingDesktopHandoffCode = options.desktopHandoffCode ?? null;
 		pendingBrowserLoginInitiation = options.initiateBrowserLogin ?? false;
 		setCustomAppUrl(instanceOrigin);
+		reloadClientDistribution();
 		try {
 			await mainWindow.loadURL(instanceOrigin);
 		} catch (error) {
