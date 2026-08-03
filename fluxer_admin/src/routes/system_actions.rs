@@ -490,6 +490,7 @@ fn build_app_public_update(form: &MultiValueForm) -> InstanceConfigUpdateRequest
             }),
             legal: None,
             registration: None,
+            downloads: None,
         }),
         policy: None,
         integrations: None,
@@ -545,6 +546,7 @@ fn build_app_legal_update(form: &MultiValueForm) -> InstanceConfigUpdateRequest 
                 privacy_url: optional("app_privacy_url"),
             }),
             registration: None,
+            downloads: None,
         }),
         policy: None,
         integrations: None,
@@ -564,6 +566,7 @@ fn build_app_registration_update(form: &MultiValueForm) -> InstanceConfigUpdateR
             registration: Some(AppRegistrationConfigUpdateRequest {
                 collect_date_of_birth: Some(form.bool_value("app_collect_date_of_birth")),
             }),
+            downloads: None,
         }),
         policy: None,
         integrations: None,

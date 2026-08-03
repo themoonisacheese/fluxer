@@ -890,7 +890,7 @@ fn app_client_downloads_config_section(
     csrf_token: &str,
     downloads: &AppClientDownloadsConfigResponse,
 ) -> Markup {
-    let is_custom = |value: &Option<String>| !value.is_none_or(String::is_empty);
+    let is_custom = |value: &Option<String>| value.as_ref().is_some_and(|s| !s.is_empty());
     section_card_with_description(
         "Client Distribution",
         "Controls where the desktop and mobile clients look for updates and install links. \

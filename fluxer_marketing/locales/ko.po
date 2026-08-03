@@ -2435,6 +2435,11 @@ msgid ""
 msgstr ""
 "2026년 6월 15일 기준으로 {ios} 앱은 소수의 {premium_tier_name} 구독자를 대상으로 하는 제한된 {testflight} 베타 버전입니다. {testflight} 슬롯이 제한되어 있으므로 대부분의 사람들에게는 공개 출시를 기다리는 것이 가장 좋습니다."
 
+#. Button or link label on the iOS app card that opens the App Store listing. Keep it short and conventional for an app-store call to action.
+#: fluxer_marketing/generated:platform_support.mobile.ios.cta
+msgctxt "platform_support.mobile.ios.cta"
+msgid "View on the App Store"
+msgstr "View on the App Store"
 #. Card title for the Android app option on the download page. Keep the platform name conventional and short. Preserve placeholders exactly.
 #: fluxer_marketing/generated:platform_support.mobile.android.title
 msgctxt "platform_support.mobile.android.title"
