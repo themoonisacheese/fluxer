@@ -2483,6 +2483,7 @@ msgstr ""
 msgctxt "platform_support.mobile.ios.cta"
 msgid "View on the App Store"
 msgstr "View on the App Store"
+
 #. Card title for the Android app option on the download page. Keep the platform name conventional and short. Preserve placeholders exactly.
 #: fluxer_marketing/generated:platform_support.mobile.android.title
 msgctxt "platform_support.mobile.android.title"
