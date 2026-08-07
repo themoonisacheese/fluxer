@@ -184,6 +184,16 @@ pub async fn instance_config_post(
             let update = build_app_downloads_update(&form);
             instance_config_result(client.update_instance_config(&update).await)
         }
+        "validate_feed" => {
+            match validate_desktop_feed(&config, state.http_client(), &client).await {
+                Ok(report) if report.all_ok => FlashData::success(&report.summary()),
+                Ok(report) => FlashData::error(&report.summary()),
+                Err(error) => {
+                    tracing::warn!(%error, "admin feed validation failed");
+                    FlashData::error("Failed to validate update feed")
+                }
+            }
+        }
         "update_app_legal" => {
             let update = build_app_legal_update(&form);
             instance_config_result(client.update_instance_config(&update).await)
@@ -530,6 +540,157 @@ fn build_app_downloads_update(form: &MultiValueForm) -> InstanceConfigUpdateRequ
         integrations: None,
         media: None,
     }
+}
+
+struct FeedValidationReport {
+    all_ok: bool,
+    summary: String,
+}
+
+impl FeedValidationReport {
+    fn summary(&self) -> String {
+        self.summary.clone()
+    }
+}
+
+/// Validates a custom desktop update feed by resolving it exactly the way the
+/// client does (append `/{channel}/{platform}/{arch}/latest`), fetching the
+/// manifest, and issuing a HEAD request for each referenced file. Returns a
+/// human-readable report used as the admin flash message.
+async fn validate_desktop_feed(
+    config: &AdminConfig,
+    http_client: &reqwest::Client,
+    client: &AdminApiClient,
+) -> Result<FeedValidationReport, crate::api::client::ApiError> {
+    let instance_config = client.get_instance_config().await?;
+    let feed = instance_config
+        .app_public
+        .downloads
+        .desktop_update_feed_url
+        .as_ref()
+        .filter(|url| !url.trim().is_empty());
+    let Some(feed) = feed else {
+        return Ok(FeedValidationReport {
+            all_ok: false,
+            summary: "No custom update feed configured (using mainline). Set a Custom update feed URL first, then validate.".to_owned(),
+        });
+    };
+
+    let channel = if config.release_channel.eq_ignore_ascii_case("canary") {
+        "canary"
+    } else {
+        "stable"
+    };
+    // We validate against the layouts the client supports. Linux is the
+    // manual-download path (most common for self-hosted forks); we also confirm
+    // the feed `/latest` manifest is served for the current host platform.
+    #[cfg(target_os = "linux")]
+    let platform = "linux";
+    #[cfg(target_os = "windows")]
+    let platform = "win32";
+    #[cfg(target_os = "macos")]
+    let platform = "darwin";
+    #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
+    let platform = "linux";
+
+    let arch = if cfg!(target_arch = "aarch64") { "arm64" } else { "x64" };
+
+    let base = feed.trim().trim_end_matches('/');
+    let feed_dir_url = format!("{base}/{channel}/{platform}/{arch}");
+    let manifest_url = format!("{feed_dir_url}/latest");
+    // Fetch the manifest.
+    let manifest = client_fetch_json(http_client, &manifest_url).await;
+    let manifest = match manifest {
+        Ok(value) => value,
+        Err(error) => {
+            return Ok(FeedValidationReport {
+                all_ok: false,
+                summary: format!(
+                    "Could not reach update feed manifest ({manifest_url}): {error}"
+                ),
+            })
+        }
+    };
+
+    let files = manifest
+        .as_object()
+        .and_then(|obj| obj.get("files"))
+        .and_then(|files| files.as_object());
+    let Some(files) = files else {
+        return Ok(FeedValidationReport {
+            all_ok: false,
+            summary: format!(
+                "Manifest at {manifest_url} is reachable but has no \"files\" object. The custom feed must mirror the mainline layout."
+            ),
+        });
+    };
+
+    if files.is_empty() {
+        return Ok(FeedValidationReport {
+            all_ok: false,
+            summary: format!("Manifest at {manifest_url} listed no downloadable files."),
+        });
+    }
+    let file_count = files.len();
+
+    // HEAD every file referenced in the manifest.
+    let mut missing: Vec<String> = Vec::new();
+    for (format, entry) in files {
+        let url = entry.get("url").and_then(|u| u.as_str()).map(str::to_owned);
+        let file_url = url.unwrap_or_else(|| {
+            if format == "latest" {
+                manifest_url.clone()
+            } else {
+                format!("{feed_dir_url}/latest/{format}")
+            }
+        });
+        if !client_head_ok(http_client, &file_url).await {
+            missing.push(file_url);
+        }
+    }
+
+    if !missing.is_empty() {
+        return Ok(FeedValidationReport {
+            all_ok: false,
+            summary: format!(
+                "Update feed manifest is reachable, but {} file(s) could not be downloaded: {}",
+                missing.len(),
+                missing.join(", ")
+            ),
+        });
+    }
+
+    Ok(FeedValidationReport {
+        all_ok: true,
+        summary: format!(
+            "Update feed OK: manifest {manifest_url} reachable and all {} referenced file(s) download successfully.",
+            file_count
+        ),
+    })
+}
+
+async fn client_fetch_json(client: &reqwest::Client, url: &str) -> Result<serde_json::Value, String> {
+    let response = client
+        .get(url)
+        .header(reqwest::header::ACCEPT, "application/json")
+        .timeout(std::time::Duration::from_secs(10))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    if !response.status().is_success() {
+        return Err(format!("HTTP {}", response.status()));
+    }
+    response.json::<serde_json::Value>().await.map_err(|e| e.to_string())
+}
+
+async fn client_head_ok(client: &reqwest::Client, url: &str) -> bool {
+    client
+        .head(url)
+        .timeout(std::time::Duration::from_secs(10))
+        .send()
+        .await
+        .map(|response| response.status().is_success())
+        .unwrap_or(false)
 }
 
 fn build_app_legal_update(form: &MultiValueForm) -> InstanceConfigUpdateRequest {

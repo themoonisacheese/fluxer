@@ -155,6 +155,18 @@ pub fn secondary_button(label: &str) -> Markup {
     button_markup(label, "button", SECONDARY_BUTTON_CLASS)
 }
 
+/// A secondary-styled submit button that posts the current form to a
+/// different action URL via the `formaction` attribute (e.g. a "validate"
+/// / "test" action alongside "save").
+pub fn secondary_action_button(label: &str, action: &str) -> Markup {
+    html! {
+        button type="submit" formaction=(action)
+            class={(BUTTON_BASE_CLASS) " " (SECONDARY_BUTTON_CLASS)} {
+            span { (label) }
+        }
+    }
+}
+
 pub fn form_field_group(
     label: &str,
     name: &str,

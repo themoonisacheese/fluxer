@@ -15,7 +15,7 @@ use crate::{
             badge::{BadgeVariant, badge},
             form::{
                 FORM_INPUT_CLASS, checkbox, csrf_input, danger_button, form_actions,
-                form_field_group, secondary_button_link, select_input, submit_button, text_input,
+                form_field_group, secondary_action_button, secondary_button_link, select_input, submit_button, text_input,
                 textarea_input,
             },
             page_container::page_header,
@@ -1009,7 +1009,14 @@ fn app_client_downloads_config_section(
                     }
                     (form_actions(html! {
                         (submit_button("Save Client Distribution"))
+                        (secondary_action_button(
+                            "Validate update feed",
+                            &format!("{base}/instance-config?action=validate_feed"),
+                        ))
                     }))
+                    p class="mt-2 text-xs text-neutral-500" {
+                        "Validate checks the " strong { "saved" } " custom update feed URL (exactly what clients will use). Save changes first, then validate."
+                    }
                 }
             }
         },
