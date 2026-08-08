@@ -54,6 +54,59 @@ jobs:
         shell: pwsh
         run: choco install nasm -y
 
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install Velopack CLI
+        run: dotnet tool install -g vpk
+
+      - name: Add .NET tools to PATH
+        if: matrix.platform == 'windows'
+        shell: bash
+        run: echo "$USERPROFILE/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Resolve build version and Velopack metadata
+        id: vars
+        shell: bash
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            # Use the CI CalVer resolver for consistent versioning
+            VERSION="$(cargo run --locked --quiet --manifest-path tools/ci/Cargo.toml -- resolve-calver)"
+          else
+            VERSION="${GITHUB_REF#refs/tags/}"
+            VERSION="${VERSION#v}"
+            VERSION="${VERSION#canary-}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          if [ "${{ matrix.platform }}" = "windows" ]; then
+            echo "vp_platform=win32" >> "$GITHUB_OUTPUT"
+            echo "unpack_dir=win-unpacked" >> "$GITHUB_OUTPUT"
+            if [ "$BUILD_CHANNEL" = "canary" ]; then
+              echo "main_exe=Fluxer Canary.exe" >> "$GITHUB_OUTPUT"
+              echo "pack_id=fluxer-canary" >> "$GITHUB_OUTPUT"
+              echo "pack_title=Fluxer Canary" >> "$GITHUB_OUTPUT"
+            else
+              echo "main_exe=Fluxer.exe" >> "$GITHUB_OUTPUT"
+              echo "pack_id=fluxer" >> "$GITHUB_OUTPUT"
+              echo "pack_title=Fluxer" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "vp_platform=linux" >> "$GITHUB_OUTPUT"
+            echo "unpack_dir=linux-unpacked" >> "$GITHUB_OUTPUT"
+            if [ "$BUILD_CHANNEL" = "canary" ]; then
+              echo "main_exe=fluxer-canary" >> "$GITHUB_OUTPUT"
+              echo "pack_id=fluxer-canary" >> "$GITHUB_OUTPUT"
+              echo "pack_title=Fluxer Canary" >> "$GITHUB_OUTPUT"
+            else
+              echo "main_exe=fluxer" >> "$GITHUB_OUTPUT"
+              echo "pack_id=fluxer" >> "$GITHUB_OUTPUT"
+              echo "pack_title=Fluxer" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -63,6 +116,7 @@ jobs:
           BUILD_CHANNEL: ${{ env.BUILD_CHANNEL }}
           ELECTRON_ARCH: ${{ matrix.arch }}
           FLUXER_WINDOWS_GAME_CAPTURE_MODULE_ENABLED: ${{ matrix.platform == 'windows' && 'true' || '' }}
+          PUBLIC_BUILD_VERSION: ${{ steps.vars.outputs.version }}
         run: node scripts/build.mjs
 
       - name: Build Electron app (Linux)
@@ -72,6 +126,7 @@ jobs:
           BUILD_CHANNEL: ${{ env.BUILD_CHANNEL }}
           ELECTRON_ARCH: ${{ matrix.arch }}
           USE_SYSTEM_FPM: 'true'
+          FLUXER_DESKTOP_VELOPACK_ENABLED: 'true'
         run: npx electron-builder --linux --${{ matrix.arch }} --config electron-builder.config.cjs
 
       - name: Build Electron app (Windows)
@@ -81,6 +136,7 @@ jobs:
           BUILD_CHANNEL: ${{ env.BUILD_CHANNEL }}
           ELECTRON_ARCH: ${{ matrix.arch }}
           FLUXER_WINDOWS_GAME_CAPTURE_MODULE_ENABLED: 'true'
+          FLUXER_DESKTOP_VELOPACK_ENABLED: 'true'
         run: npx electron-builder --win --${{ matrix.arch }} --config electron-builder.config.cjs
 
       - name: Generate SHA256 checksums (Unix)
@@ -102,12 +158,60 @@ jobs:
             "$hash  $($_.Name)" | Out-File "$($_.FullName).sha256" -Encoding ascii
           }
 
+      - name: Download previous Velopack release
+        working-directory: fluxer_desktop
+        shell: bash
+        run: |
+          # Download previous release for delta generation (expected to fail on first release)
+          vpk download http \
+            --url "https://copyparty.poggers.website/fluxer/${BUILD_CHANNEL}/${{ steps.vars.outputs.vp_platform }}/${{ matrix.arch }}" \
+            --outputDir "dist-velopack" \
+            || true
+
+      - name: Pack Velopack release
+        working-directory: fluxer_desktop
+        shell: bash
+        run: |
+          vpk pack \
+            --packId "${{ steps.vars.outputs.pack_id }}" \
+            --packVersion "${{ steps.vars.outputs.version }}" \
+            --packDir "dist-electron/${{ steps.vars.outputs.unpack_dir }}" \
+            --mainExe "${{ steps.vars.outputs.main_exe }}" \
+            --packTitle "${{ steps.vars.outputs.pack_title }}" \
+            --outputDir "dist-velopack"
+
+      - name: Upload Velopack release to copyparty
+        working-directory: fluxer_desktop/dist-velopack
+        shell: bash
+        env:
+          COPYPARTY_TOKEN: ${{ secrets.COPYPARTY_UPLOAD_TOKEN }}
+        run: |
+          DEST_BASE="https://copyparty.poggers.website/fluxer/${BUILD_CHANNEL}/${{ steps.vars.outputs.vp_platform }}/${{ matrix.arch }}"
+          FAILED=0
+          for f in *; do
+            [ -f "$f" ] || continue
+            echo "Uploading $f..."
+            if ! curl -sf -T "$f" -H "PW: ${COPYPARTY_TOKEN}" "${DEST_BASE}/$f"; then
+              echo "::error::Failed to upload $f to copyparty"
+              FAILED=1
+            fi
+          done
+          exit $FAILED
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: desktop-${{ matrix.platform }}-${{ matrix.arch }}
           path: fluxer_desktop/dist-electron/*
           if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Velopack artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-velopack-${{ matrix.platform }}-${{ matrix.arch }}
+          path: fluxer_desktop/dist-velopack/*
+          if-no-files-found: warn
           retention-days: 14
 
 
@@ -160,6 +264,8 @@ jobs:
             -name '*.rpm' -o \
             -name '*.tar.gz' -o \
             -name '*.exe' -o \
-            -name '*.sha256' \
+            -name '*.sha256' -o \
+            -name '*.nupkg' -o \
+            -name 'releases.*.json' \
           \) \) -print0)
           gh release upload "$TAG" "${FILES[@]}" --clobber

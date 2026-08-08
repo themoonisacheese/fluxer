@@ -1268,6 +1268,9 @@ module.exports = {
 				target: 'tar.gz',
 				arch: targetArchs,
 			},
+			...(process.env.FLUXER_DESKTOP_VELOPACK_ENABLED === 'true'
+				? [{target: 'dir', arch: targetArchs}]
+				: []),
 		],
 		desktop: {
 			entry: linuxDesktopEntry,
