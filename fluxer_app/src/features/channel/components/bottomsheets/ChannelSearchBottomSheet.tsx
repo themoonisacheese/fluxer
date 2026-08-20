@@ -8,6 +8,11 @@ import {Message as MessageComponent} from '@app/features/channel/components/Chan
 import {CollapsedMessageVisibilityProvider} from '@app/features/channel/components/CollapsedMessageVisibilityContext';
 import {MessageActionBottomSheet} from '@app/features/channel/components/MessageActionBottomSheet';
 import type {MessageGroupRenderWrapperProps} from '@app/features/channel/components/MessageGroup';
+import {
+	buildSearchResultGroups,
+	buildSearchResultGroupsByMessageId,
+	countSearchResultChannels,
+} from '@app/features/channel/components/SearchResultGrouping';
 import {SearchResultMessageList} from '@app/features/channel/components/SearchResultMessageList';
 import {type ChannelSearchFilters, useChannelSearch} from '@app/features/channel/hooks/useChannelSearch';
 import type {Channel} from '@app/features/channel/models/Channel';
@@ -40,6 +45,7 @@ import {ScopeSheet} from '@app/features/search/components/search/ScopeSheet';
 import {SearchFilterChip} from '@app/features/search/components/search/SearchFilterChip';
 import {SortModeSheet} from '@app/features/search/components/search/SortModeSheet';
 import {UserFilterSheet} from '@app/features/search/components/search/UserFilterSheet';
+import {remFromPx} from '@app/features/theme/layout/RemFromPx';
 import styles from '@app/features/theme/styles/ChannelSearchBottomSheet.module.css';
 import {
 	CloseIcon,
@@ -215,22 +221,17 @@ export const ChannelSearchBottomSheet: React.FC<ChannelSearchBottomSheetProps> =
 			() => new Map(successChannels.map((searchChannel) => [searchChannel.id, searchChannel])),
 			[successChannels],
 		);
-		const messagesByChannel = React.useMemo(() => {
-			const grouped = new Map<string, Array<Message>>();
-			for (const message of successResults) {
-				if (!grouped.has(message.channelId)) {
-					grouped.set(message.channelId, []);
-				}
-				grouped.get(message.channelId)!.push(message);
-			}
-			return grouped;
-		}, [successResults]);
+		const resultGroups = React.useMemo(() => buildSearchResultGroups(successResults), [successResults]);
+		const resultGroupsByMessageId = React.useMemo(
+			() => buildSearchResultGroupsByMessageId(resultGroups),
+			[resultGroups],
+		);
 		const spammerOverrideVersion = LocalUserSpamOverride.version;
 		const collapsedMessageVisibility = React.useMemo(
 			() => ({
 				isMessageRevealed: (message: Message) => {
-					const channelMessages = messagesByChannel.get(message.channelId);
-					if (!channelMessages) {
+					const resultGroup = resultGroupsByMessageId.get(message.id);
+					if (!resultGroup) {
 						return false;
 					}
 					const messageChannel = searchChannelsById.get(message.channelId) ?? Channels.getChannel(message.channelId);
@@ -239,14 +240,14 @@ export const ChannelSearchBottomSheet: React.FC<ChannelSearchBottomSheetProps> =
 					}
 					const groupKey = getCollapsedMessageGroupKey({
 						channel: messageChannel,
-						messages: channelMessages,
+						messages: resultGroup.messages,
 						messageId: message.id,
 						treatSpam: true,
 					});
 					return groupKey != null && revealedGroupKeys.has(groupKey);
 				},
 			}),
-			[messagesByChannel, revealedGroupKeys, searchChannelsById, spammerOverrideVersion],
+			[resultGroupsByMessageId, revealedGroupKeys, searchChannelsById, spammerOverrideVersion],
 		);
 		const handleCollapsedGroupRevealChange = useCallback((groupKey: string, revealed: boolean) => {
 			setRevealedGroupKeys((current) => {
@@ -597,7 +598,7 @@ export const ChannelSearchBottomSheet: React.FC<ChannelSearchBottomSheetProps> =
 						);
 					}
 					const totalPages = Math.max(1, Math.ceil(total / hitsPerPage));
-					const hasMultipleChannels = messagesByChannel.size > 1;
+					const hasMultipleChannels = countSearchResultChannels(resultGroups) > 1;
 					return (
 						<>
 							<CollapsedMessageVisibilityProvider
@@ -612,8 +613,9 @@ export const ChannelSearchBottomSheet: React.FC<ChannelSearchBottomSheetProps> =
 									data-message-selection-root="true"
 									data-flx="channel.channel-search-bottom-sheet.render-content.results-scroller"
 								>
-									{Array.from(messagesByChannel.entries()).map(([channelId, messages]) => {
-										const messageChannel = searchChannelsById.get(channelId) ?? Channels.getChannel(channelId);
+									{resultGroups.map((resultGroup) => {
+										const messageChannel =
+											searchChannelsById.get(resultGroup.channelId) ?? Channels.getChannel(resultGroup.channelId);
 										if (!messageChannel) {
 											return null;
 										}
@@ -647,7 +649,7 @@ export const ChannelSearchBottomSheet: React.FC<ChannelSearchBottomSheetProps> =
 											</LongPressable>
 										);
 										return (
-											<React.Fragment key={channelId}>
+											<React.Fragment key={resultGroup.key}>
 												{hasMultipleChannels && (
 													<div
 														className={styles.channelSection}
@@ -666,7 +668,7 @@ export const ChannelSearchBottomSheet: React.FC<ChannelSearchBottomSheetProps> =
 												)}
 												<SearchResultMessageList
 													channel={messageChannel}
-													messages={messages}
+													messages={resultGroup.messages}
 													revealedGroupKeys={revealedGroupKeys}
 													onGroupRevealChange={handleCollapsedGroupRevealChange}
 													collapsedGroupClassName={styles.collapsedMessageGroup}
@@ -796,7 +798,13 @@ export const ChannelSearchBottomSheet: React.FC<ChannelSearchBottomSheetProps> =
 									<SearchFilterChip
 										label={i18n._(IN_DESCRIPTOR)}
 										value={getInChannelLabel()}
-										icon={<HashIcon size={14} weight="bold" data-flx="channel.channel-search-bottom-sheet.hash-icon" />}
+										icon={
+											<HashIcon
+												size={remFromPx(14)}
+												weight="bold"
+												data-flx="channel.channel-search-bottom-sheet.hash-icon"
+											/>
+										}
 										onPress={() => setChannelSheetOpen(true)}
 										onRemove={inChannelIds.length > 0 ? () => setInChannelIds([]) : undefined}
 										isActive={inChannelIds.length > 0}

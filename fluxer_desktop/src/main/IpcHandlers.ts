@@ -5,14 +5,12 @@ import {
 	type DesktopWindowBehaviorSettings,
 	getDesktopTroubleshootingSettings,
 	getDesktopWindowBehaviorSettings,
-	setCustomAppUrl,
 	setDesktopWindowBehaviorSettings,
 } from '@electron/common/DesktopConfig';
 import type {
 	ClipboardWriteFileResult,
 	DownloadFileResult,
 	MediaAccessType,
-	SwitchInstanceUrlOptions,
 	TrayPresenceStatus,
 } from '@electron/common/Types';
 import {hasEnabledBlinkFeature, MIDDLE_CLICK_AUTOSCROLL_BLINK_FEATURE} from '@electron/main/ChromiumRuntime';
@@ -64,7 +62,6 @@ import {
 import {
 	clearSavedWindowBounds,
 	closeThemeStudioPopoutWindow,
-	desktopFirstClickPassThroughPendingRestart,
 	desktopTransparencyPendingRestart,
 	desktopUseNativeTitleBarPendingRestart,
 	focusThemeStudioPopoutWindow,
@@ -145,37 +142,8 @@ function normalizeInstanceOrigin(rawUrl: string): string {
 	}
 	return url.origin;
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object';
-}
-
-function isValidWellKnownPayload(payload: unknown): boolean {
-	if (!isRecord(payload)) {
-		return false;
-	}
-	if (!('endpoints' in payload)) {
-		return false;
-	}
-	const endpoints = (
-		payload as {
-			endpoints?: unknown;
-		}
-	).endpoints;
-	if (!endpoints || typeof endpoints !== 'object') {
-		return false;
-	}
-	const api = (
-		endpoints as {
-			api?: unknown;
-		}
-	).api;
-	const gateway = (
-		endpoints as {
-			gateway?: unknown;
-		}
-	).gateway;
-	return typeof api === 'string' && typeof gateway === 'string';
 }
 
 function normalizeDesktopWindowBehaviorUpdate(value: unknown): Partial<DesktopWindowBehaviorSettings> {
@@ -206,9 +174,6 @@ function normalizeDesktopWindowBehaviorUpdate(value: unknown): Partial<DesktopWi
 	}
 	if (typeof value.middleClickAutoscroll === 'boolean') {
 		update.middleClickAutoscroll = value.middleClickAutoscroll;
-	}
-	if (typeof value.firstClickPassThroughWhenUnfocused === 'boolean') {
-		update.firstClickPassThroughWhenUnfocused = value.firstClickPassThroughWhenUnfocused;
 	}
 	return update;
 }
@@ -271,6 +236,9 @@ export function registerIpcHandlers(): void {
 		pendingBrowserLoginInitiation = false;
 		return pending;
 	});
+export function registerIpcHandlers(): void {
+	registerVoiceDebugEventSinkPopoutIpcHandlers();
+	registerVoiceBackgroundMediaCacheHandlers();
 	ipcMain.handle('get-desktop-info', () => getDesktopInfo());
 	ipcMain.handle('get-gpu-info', () => getGpuInfo());
 	ipcMain.handle('get-app-metrics', () => getAppMetricsSnapshot());
@@ -386,7 +354,6 @@ export function registerIpcHandlers(): void {
 	ipcMain.handle('desktop-window-behavior-pending-restart', (): boolean => {
 		return (
 			desktopTrayChangePendingRestart() ||
-			desktopFirstClickPassThroughPendingRestart() ||
 			desktopUseNativeTitleBarPendingRestart() ||
 			desktopTransparencyPendingRestart()
 		);

@@ -33,6 +33,7 @@ export type APIGeoipConfig = APIGeoipFilesystemConfig | APIGeoipS3Config;
 export interface APIConfig {
 	nodeEnv: 'development' | 'production';
 	port: number;
+	ipBanExemptIps: Array<string>;
 	cassandra: {
 		hosts: string;
 		port: number;
@@ -177,6 +178,9 @@ export interface APIConfig {
 		ipinfoApiKey?: string;
 		accountPolicyDsl?: unknown;
 	};
+	blocklistFeeds: {
+		enabled: boolean;
+	};
 	captcha: {
 		enabled: boolean;
 		provider: 'hcaptcha' | 'turnstile' | 'none';
@@ -255,6 +259,7 @@ export interface APIConfig {
 	auth: {
 		sudoModeSecret: string;
 		connectionInitiationSecret: string;
+		ssoAllowPrivateAddresses: boolean;
 		passkeys: {
 			rpName: string;
 			rpId: string;
@@ -322,6 +327,7 @@ export interface APIConfig {
 		testHarnessToken?: string;
 	};
 	presignedAttachmentUploadsEnabled: boolean;
+	presignedDownloadsEnabled: boolean;
 	attachmentDecayEnabled: boolean;
 	deletionGracePeriodHours: number;
 	inactivityDeletionThresholdDays?: number;

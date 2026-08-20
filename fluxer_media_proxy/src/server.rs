@@ -49,6 +49,7 @@ struct AppState {
     nsfw_client: reqwest::Client,
     transform_cache: Arc<Cache>,
     coalescer: Arc<ByteCoalescer>,
+    native_transform_admissions: TimedSemaphore,
     native_transforms: TimedSemaphore,
 }
 
@@ -75,6 +76,7 @@ pub async fn run(cfg: Config) -> anyhow::Result<()> {
             cfg.transform_cache_ttl_ms,
         )),
         coalescer: Arc::new(ByteCoalescer::new()),
+        native_transform_admissions: TimedSemaphore::new(transform_admission_capacity(&cfg)),
         native_transforms: TimedSemaphore::new(cfg.max_native_transforms),
         cfg,
     });
@@ -115,7 +117,10 @@ pub async fn run(cfg: Config) -> anyhow::Result<()> {
             bunny_ip_gate::gate_middleware,
         ));
     }
-    router = router.layer(middleware::from_fn(add_security_header_middleware));
+    router = router.layer(middleware::from_fn_with_state(
+        state.cfg.mode,
+        add_security_header_middleware,
+    ));
     let app = router.with_state(state);
     let listener = TcpListener::bind(addr).await?;
     info!(%addr, "media proxy listening");
@@ -174,11 +179,16 @@ async fn add_version_header(request: Request<Body>, next: middleware::Next) -> R
 }
 
 async fn add_security_header_middleware(
+    State(mode): State<DeploymentMode>,
     request: Request<Body>,
     next: middleware::Next,
 ) -> Response {
     let mut response = next.run(request).await;
-    http_headers::add_security_headers(response.headers_mut());
+    let headers = response.headers_mut();
+    http_headers::add_security_headers(headers);
+    if mode == DeploymentMode::Static {
+        headers.remove("X-Robots-Tag");
+    }
     response
 }
 
@@ -1759,8 +1769,9 @@ async fn serve_stored_passthrough_stream(
         return storage_error_response(key, StorageError::StreamTooLong);
     }
     let content_type = passthrough_content_type(&head, key);
-    if is_svg_content_type(&content_type)
-        || image_extension_from_filename(key) == Some(AssetExtension::Svg)
+    if app.cfg.mode == DeploymentMode::Mp
+        && (is_svg_content_type(&content_type)
+            || image_extension_from_filename(key) == Some(AssetExtension::Svg))
     {
         let object = match app.store.read_object(bucket, key).await {
             Ok(object) => object,
@@ -2395,6 +2406,7 @@ async fn run_transform(
     options: media_process::ImageOptions,
 ) -> anyhow::Result<media_process::ProcessedMedia> {
     let deadline = deadline_instant(options.deadline_ms);
+    let _admission = app.native_transform_admissions.try_wait()?;
     let wait_start = metrics::now_ms();
     let _permit = app.native_transforms.wait_until(deadline).await?;
     let waited = (metrics::now_ms() - wait_start).max(0) as u64;
@@ -2419,6 +2431,7 @@ async fn run_video_transform(
     deadline_ms: Option<i64>,
 ) -> anyhow::Result<media_process::ProcessedMedia> {
     let deadline = deadline_instant(deadline_ms);
+    let _admission = app.native_transform_admissions.try_wait()?;
     let wait_start = metrics::now_ms();
     let _permit = app.native_transforms.wait_until(deadline).await?;
     let waited = (metrics::now_ms() - wait_start).max(0) as u64;
@@ -2464,6 +2477,10 @@ fn transform_error_is_timeout(error: &anyhow::Error) -> bool {
         == Some(&media_process::MediaError::RequestTimeout)
         || error.downcast_ref::<crate::timed_semaphore::TimedSemaphoreError>()
             == Some(&crate::timed_semaphore::TimedSemaphoreError::RequestTimeout)
+}
+
+fn transform_admission_capacity(cfg: &Config) -> usize {
+    cfg.max_native_transforms + cfg.worker_queue_capacity
 }
 
 fn media_response(
@@ -3065,6 +3082,53 @@ mod tests {
     use super::*;
     use base64::engine::general_purpose::STANDARD;
 
+    async fn robots_header_for(mode: DeploymentMode) -> Option<String> {
+        use axum::{body::Body, http::Request, routing::get};
+        let router = Router::new()
+            .route(
+                "/probe",
+                get(|| async {
+                    let mut response = Response::new(Body::empty());
+                    http_headers::add_media_headers(response.headers_mut(), 0, "text/plain", None);
+                    response
+                }),
+            )
+            .layer(middleware::from_fn_with_state(
+                mode,
+                add_security_header_middleware,
+            ));
+        let response = tower::ServiceExt::oneshot(
+            router,
+            Request::builder()
+                .uri("/probe")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+        response
+            .headers()
+            .get("X-Robots-Tag")
+            .map(|v| v.to_str().unwrap().to_owned())
+    }
+
+    #[tokio::test]
+    async fn static_mode_does_not_set_robots_tag() {
+        assert_eq!(robots_header_for(DeploymentMode::Static).await, None);
+    }
+
+    #[tokio::test]
+    async fn media_and_upload_modes_still_set_robots_tag() {
+        assert_eq!(
+            robots_header_for(DeploymentMode::Mp).await.as_deref(),
+            Some(http_headers::ROBOTS)
+        );
+        assert_eq!(
+            robots_header_for(DeploymentMode::Upload).await.as_deref(),
+            Some(http_headers::ROBOTS)
+        );
+    }
+
     fn upload_relay_test_config(
         storage_root: &std::path::Path,
         spool_dir: &std::path::Path,
@@ -3115,6 +3179,7 @@ mod tests {
                 cfg.transform_cache_ttl_ms,
             )),
             coalescer: Arc::new(ByteCoalescer::new()),
+            native_transform_admissions: TimedSemaphore::new(transform_admission_capacity(&cfg)),
             native_transforms: TimedSemaphore::new(cfg.max_native_transforms),
             cfg,
         })

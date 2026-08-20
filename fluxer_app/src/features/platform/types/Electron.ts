@@ -8,12 +8,9 @@ import type {
 	RegistrationResponseJSON,
 } from '@simplewebauthn/browser';
 
-export type DesktopBuildVariant = 'default' | 'windows-game-capture';
-
 export interface DesktopInfo {
 	version: string;
 	channel: 'stable' | 'canary';
-	buildVariant: DesktopBuildVariant;
 	arch: string;
 	hardwareArch: string;
 	runningUnderRosetta: boolean;
@@ -79,7 +76,6 @@ export interface DesktopWindowBehaviorSettings {
 	activeSmoothScrolling: boolean;
 	middleClickAutoscroll: boolean;
 	activeMiddleClickAutoscroll: boolean;
-	firstClickPassThroughWhenUnfocused: boolean;
 }
 
 export interface ThemeLocalFileReference {
@@ -308,7 +304,6 @@ export interface AppMetricsSnapshot {
 
 export interface ElectronAPI {
 	platform: NodeJS.Platform;
-	buildVariant: DesktopBuildVariant;
 	getDesktopInfo: () => Promise<DesktopInfo>;
 	getGpuInfo?: () => Promise<GpuInfo>;
 	getAppMetrics?: () => Promise<AppMetricsSnapshot>;

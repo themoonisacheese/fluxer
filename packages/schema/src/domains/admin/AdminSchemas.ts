@@ -522,7 +522,6 @@ const AppPublicConfigUpdateRequest = z.object({
 
 const InstancePolicyResponse = z.object({
 	single_community_enabled: z.boolean(),
-	single_community_locked: z.boolean(),
 	single_community_guild_id: z.string().nullable(),
 	direct_messages_disabled: z.boolean(),
 	direct_messages_locked: z.boolean(),
@@ -544,6 +543,11 @@ const InstancePolicyResponse = z.object({
 	}),
 	welcome_dm_enabled: z.boolean(),
 	welcome_dm_content: z.string().nullable(),
+	deferred_phone_gate: z.object({
+		enabled: z.boolean(),
+		window_hours: z.number(),
+		member_threshold: z.number(),
+	}),
 });
 
 const CaptchaProviderSchema = z.enum(['hcaptcha', 'turnstile', 'none']);
@@ -754,6 +758,13 @@ export const InstanceConfigUpdateRequest = z.object({
 				.nullish(),
 			welcome_dm_enabled: z.boolean().optional(),
 			welcome_dm_content: z.string().trim().max(4000).nullish(),
+			deferred_phone_gate: z
+				.object({
+					enabled: z.boolean().optional(),
+					window_hours: z.number().positive().max(8760).optional(),
+					member_threshold: z.number().int().positive().max(1_000_000).optional(),
+				})
+				.nullish(),
 		})
 		.nullish(),
 });

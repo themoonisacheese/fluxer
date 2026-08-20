@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type {MasterConfig} from '@fluxer/config/src/MasterConfig';
+import {parseIpAddress} from '@fluxer/ip_utils/src/IpAddress';
 import {parseGeoipSourceConfig, resolveGeoipRuntimeSourceConfig} from '@pkgs/geoip/src/GeoipStartup';
 import type {APIConfig, BlueskyOAuthConfig} from './config/APIConfig';
 import type {WorkerTaskName} from './worker/WorkerLaneConfig';
@@ -49,6 +50,18 @@ function resolveTrustClientIpHeader(proxyConfig: object): boolean {
 		return configuredValue;
 	}
 	return false;
+}
+
+function normalizeIpBanExemptIps(values: Array<string>): Array<string> {
+	const normalized = new Set<string>();
+	for (const value of values) {
+		const parsed = parseIpAddress(value);
+		if (!parsed) {
+			throw new Error(`FLUXER_API_IP_BAN_EXEMPT_IPS contains an invalid IP address: ${value}`);
+		}
+		normalized.add(parsed.normalized);
+	}
+	return Array.from(normalized);
 }
 
 function mapPushProviderApps(
@@ -107,6 +120,7 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 	return {
 		nodeEnv: master.env === 'test' ? 'development' : master.env,
 		port: master.services.api.port,
+		ipBanExemptIps: normalizeIpBanExemptIps(master.services.api.ip_ban_exempt_ips),
 		cassandra: {
 			hosts: cassandraSource?.hosts.join(',') ?? '',
 			port: cassandraSource?.port ?? 9042,
@@ -262,6 +276,9 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 			ipinfoApiKey: master.integrations.risk_integration.ipinfo_api_key || undefined,
 			accountPolicyDsl: master.integrations.risk_integration.account_policy_dsl,
 		},
+		blocklistFeeds: {
+			enabled: master.integrations.blocklist_feeds.enabled ?? !master.instance.self_hosted,
+		},
 		captcha: {
 			enabled: master.integrations.captcha.enabled,
 			provider: master.integrations.captcha.provider,
@@ -347,6 +364,7 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 		auth: {
 			sudoModeSecret: master.auth.sudo_mode_secret,
 			connectionInitiationSecret: master.auth.connection_initiation_secret,
+			ssoAllowPrivateAddresses: master.auth.sso_allow_private_addresses,
 			passkeys: {
 				rpName: master.auth.passkeys.rp_name,
 				rpId: master.auth.passkeys.rp_id,
@@ -411,6 +429,7 @@ export function buildAPIConfigFromMaster(master: MasterConfig): APIConfig {
 			testHarnessToken: master.dev.test_harness_token,
 		},
 		presignedAttachmentUploadsEnabled: master.services.api.presigned_attachment_uploads_enabled ?? false,
+		presignedDownloadsEnabled: master.services.api.presigned_downloads_enabled ?? false,
 		attachmentDecayEnabled: master.attachment_decay_enabled,
 		deletionGracePeriodHours: master.dev.test_mode_enabled ? 0.01 : master.deletion_grace_period_hours,
 		inactivityDeletionThresholdDays: master.inactivity_deletion_threshold_days,

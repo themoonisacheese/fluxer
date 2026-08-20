@@ -121,15 +121,6 @@ jobs:
       approval-required: false
     secrets: inherit
 
-  build_marketing:
-    needs: meta
-    uses: ./.github/workflows/build-marketing.yaml
-    with:
-      build-version: ${{ needs.meta.outputs.build_version }}
-      finalise-release: false
-      approval-required: false
-    secrets: inherit
-
   build_media_proxy:
     needs: meta
     uses: ./.github/workflows/build-media-proxy.yaml
@@ -196,7 +187,6 @@ jobs:
       - build_docs
       - build_gateway
       - build_gifs
-      - build_marketing
       - build_media_proxy
       - build_messages
       - build_snowflakes
@@ -247,7 +237,6 @@ jobs:
       - build_docs
       - build_gateway
       - build_gifs
-      - build_marketing
       - build_media_proxy
       - build_messages
       - build_snowflakes

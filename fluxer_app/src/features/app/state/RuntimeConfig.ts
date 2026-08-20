@@ -64,6 +64,38 @@ export interface RuntimeConfigSnapshot {
 	appPublic: InstanceAppPublic;
 }
 
+function runtimeInstanceKey(snapshot: RuntimeConfigSnapshot): string | null {
+	try {
+		const endpoint = snapshot.apiEndpoint.trim();
+		const url = new URL(endpoint);
+		if (
+			(url.protocol !== 'https:' && url.protocol !== 'http:') ||
+			url.username ||
+			url.password ||
+			url.search ||
+			url.hash
+		) {
+			return null;
+		}
+		const path = url.pathname.replace(/\/+$/u, '');
+		return `${url.origin.toLowerCase()}${path}`;
+	} catch {
+		return null;
+	}
+}
+
+export function runtimeConfigSnapshotsAreSameInstance(
+	left: RuntimeConfigSnapshot | undefined,
+	right: RuntimeConfigSnapshot,
+): boolean {
+	if (!left) {
+		return false;
+	}
+	const leftKey = runtimeInstanceKey(left);
+	const rightKey = runtimeInstanceKey(right);
+	return leftKey !== null && leftKey === rightKey;
+}
+
 const DEFAULT_INSTANCE_FEATURES: InstanceFeatures = {
 	voice_enabled: false,
 	stripe_enabled: false,
@@ -254,7 +286,6 @@ export function normalizeAppPublicConfig(appPublic?: Partial<InstanceAppPublic> 
 }
 
 class RuntimeConfig {
-	private _connectSeq = 0;
 	apiEndpoint: string = '';
 	apiPublicEndpoint: string = '';
 	gatewayEndpoint: string = '';
@@ -298,43 +329,6 @@ class RuntimeConfig {
 
 	waitForInit(): Promise<void> {
 		return Promise.resolve();
-	}
-
-	applySnapshot(snapshot: RuntimeConfigSnapshot): void {
-		const gifProviderInfo = normalizeGifProviderInfo({
-			name: snapshot.gifProvider,
-			attributionRequired: snapshot.gifAttributionRequired,
-		});
-		this.apiEndpoint = snapshot.apiEndpoint;
-		this.apiPublicEndpoint = snapshot.apiPublicEndpoint;
-		this.gatewayEndpoint = snapshot.gatewayEndpoint;
-		this.mediaEndpoint = snapshot.mediaEndpoint;
-		this.staticCdnEndpoint = snapshot.staticCdnEndpoint;
-		this.marketingEndpoint = snapshot.marketingEndpoint;
-		this.adminEndpoint = snapshot.adminEndpoint;
-		this.inviteEndpoint = snapshot.inviteEndpoint;
-		this.giftEndpoint = snapshot.giftEndpoint;
-		this.webAppEndpoint = snapshot.webAppEndpoint;
-		this.gifProvider = gifProviderInfo.name;
-		this.gifProviderDisplayName = gifProviderInfo.displayName;
-		this.gifAttributionRequired = gifProviderInfo.attributionRequired;
-		this.captchaProvider = snapshot.captchaProvider;
-		this.hcaptchaSiteKey = snapshot.hcaptchaSiteKey;
-		this.turnstileSiteKey = snapshot.turnstileSiteKey;
-		this.apiCodeVersion = snapshot.apiCodeVersion;
-		this.features = {
-			...DEFAULT_INSTANCE_FEATURES,
-			...snapshot.features,
-		};
-		this.sso = snapshot.sso;
-		this.registration = normalizeInstanceRegistration(snapshot.registration);
-		this.community = normalizeInstanceCommunity(snapshot.community);
-		this.services = normalizeInstanceServices(snapshot.services);
-		this.publicPushVapidKey = snapshot.publicPushVapidKey;
-		this.limits = this.normalizeLimits(snapshot.limits ?? this.createEmptyLimitConfig());
-		this.currentDefaultsHash = null;
-		this.appPublic = normalizeAppPublicConfig(snapshot.appPublic);
-		applyDocumentBranding(this.appPublic);
 	}
 
 	getSnapshot(): RuntimeConfigSnapshot {
@@ -396,16 +390,6 @@ class RuntimeConfig {
 		}
 		this.currentDefaultsHash = null;
 		return this.normalizeLimits(limits as LimitConfigSnapshot | undefined);
-	}
-
-	async withSnapshot<T>(snapshot: RuntimeConfigSnapshot, fn: () => Promise<T>): Promise<T> {
-		const before = this.getSnapshot();
-		this.applySnapshot(snapshot);
-		try {
-			return await fn();
-		} finally {
-			this.applySnapshot(before);
-		}
 	}
 
 	applyAdminInstanceConfig(config: InstanceConfigResponse): void {
@@ -523,7 +507,6 @@ class RuntimeConfig {
 		url.pathname = url.pathname.replace(/\/+$/, '');
 		return url.toString();
 	}
-
 	private updateFromInstance(instance: InstanceDiscoveryResponse): void {
 		this.assertCodeVersion(instance.api_code_version);
 		const apiEndpoint = instance.endpoints.api_client ?? instance.endpoints.api;
@@ -760,5 +743,4 @@ function isValidInstanceDiscoveryResponse(body: unknown): body is InstanceDiscov
 	const endpoints = record.endpoints as Record<string, unknown>;
 	return typeof endpoints.api === 'string' && typeof endpoints.gateway === 'string';
 }
-
 export default new RuntimeConfig();

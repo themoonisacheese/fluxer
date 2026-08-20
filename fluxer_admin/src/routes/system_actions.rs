@@ -7,17 +7,17 @@ use crate::{
             AppBrandingConfigUpdateRequest, AppClientDownloadsConfigUpdateRequest,
             AppLegalConfigUpdateRequest, AppPublicConfigUpdateRequest,
             AppRegistrationConfigUpdateRequest, AppSetupConfigUpdateRequest,
-            CreateRegistrationUrlRequest, GatewayRolloutConfigUpdateRequest,
-            GatewayRolloutMode, InstanceAttachmentDecayUpdateRequest,
-            InstanceBlueskyIntegrationUpdateRequest, InstanceBlueskyKeyIntegrationUpdateRequest,
-            InstanceCaptchaIntegrationUpdateRequest, InstanceConfigUpdateRequest,
-            InstanceEmailIntegrationUpdateRequest, InstanceEmailSmtpIntegrationUpdateRequest,
-            InstanceEmailSmtpTestRequest, InstanceGifIntegrationUpdateRequest,
-            InstanceIntegrationsUpdateRequest, InstanceMediaUpdateRequest,
-            InstancePolicyUpdateRequest, InstanceRegistrationConfigUpdateRequest,
-            InstanceServicesUpdateRequest, InstanceYoutubeIntegrationUpdateRequest,
-            LimitConfigUpdateRequest, LimitRule, LimitRuleFilters, PremiumMode,
-            RegistrationMode, SsoConfigUpdateRequest, VoiceE2eeScope,
+            CreateRegistrationUrlRequest, GatewayRolloutConfigUpdateRequest, GatewayRolloutMode,
+            InstanceAttachmentDecayUpdateRequest, InstanceBlueskyIntegrationUpdateRequest,
+            InstanceBlueskyKeyIntegrationUpdateRequest, InstanceCaptchaIntegrationUpdateRequest,
+            InstanceConfigUpdateRequest, InstanceEmailIntegrationUpdateRequest,
+            InstanceEmailSmtpIntegrationUpdateRequest, InstanceEmailSmtpTestRequest,
+            InstanceGifIntegrationUpdateRequest, InstanceIntegrationsUpdateRequest,
+            InstanceMediaUpdateRequest, InstancePolicyUpdateRequest,
+            InstanceRegistrationConfigUpdateRequest, InstanceServicesUpdateRequest,
+            InstanceYoutubeIntegrationUpdateRequest, LimitConfigUpdateRequest, LimitRule,
+            LimitRuleFilters, PremiumMode, RegistrationMode, SsoConfigUpdateRequest,
+            VoiceE2eeScope, DeferredPhoneGateUpdateRequest,
         },
     },
     config::AdminConfig,
@@ -230,7 +230,11 @@ pub async fn instance_config_post(
             Err(message) => FlashData::error(message),
         },
         "disable_single_community" => {
-            let update = build_disable_single_community_update();
+            let update = build_single_community_update(false);
+            instance_config_result(client.update_instance_config(&update).await)
+        }
+        "enable_single_community" => {
+            let update = build_single_community_update(true);
             instance_config_result(client.update_instance_config(&update).await)
         }
         "create_registration_url" => match build_create_registration_url_request(&form) {
@@ -747,6 +751,7 @@ fn build_policy_update(form: &MultiValueForm) -> InstanceConfigUpdateRequest {
     let services = build_services_update(form);
     let welcome_dm_enabled = Some(form.first("policy_welcome_dm_enabled").is_some());
     let welcome_dm_content = form.clean("policy_welcome_dm_content");
+    let deferred_phone_gate = build_deferred_phone_gate_update(form);
     InstanceConfigUpdateRequest {
         gateway_rollout: None,
         registration: None,
@@ -760,10 +765,35 @@ fn build_policy_update(form: &MultiValueForm) -> InstanceConfigUpdateRequest {
             services,
             welcome_dm_enabled,
             welcome_dm_content,
+            deferred_phone_gate,
         }),
         integrations: None,
         media: None,
     }
+}
+
+fn build_deferred_phone_gate_update(
+    form: &MultiValueForm,
+) -> Option<DeferredPhoneGateUpdateRequest> {
+    let enabled = form
+        .first("policy_deferred_phone_gate_enabled")
+        .map(|value| value == "true");
+    let window_hours = form
+        .first("policy_deferred_phone_gate_window_hours")
+        .and_then(|value| value.parse::<f64>().ok())
+        .filter(|value| *value > 0.0);
+    let member_threshold = form
+        .first("policy_deferred_phone_gate_member_threshold")
+        .and_then(|value| value.parse::<i64>().ok())
+        .filter(|value| *value > 0);
+    if enabled.is_none() && window_hours.is_none() && member_threshold.is_none() {
+        return None;
+    }
+    Some(DeferredPhoneGateUpdateRequest {
+        enabled,
+        window_hours,
+        member_threshold,
+    })
 }
 
 fn build_services_update(form: &MultiValueForm) -> Option<InstanceServicesUpdateRequest> {
@@ -902,20 +932,21 @@ fn build_smtp_test_request(form: &MultiValueForm) -> Result<InstanceEmailSmtpTes
     })
 }
 
-fn build_disable_single_community_update() -> InstanceConfigUpdateRequest {
+fn build_single_community_update(enabled: bool) -> InstanceConfigUpdateRequest {
     InstanceConfigUpdateRequest {
         gateway_rollout: None,
         registration: None,
         sso: None,
         app_public: None,
         policy: Some(InstancePolicyUpdateRequest {
-            single_community_enabled: Some(false),
+            single_community_enabled: Some(enabled),
             single_community_name: None,
             direct_messages_disabled: None,
             premium_mode: None,
             services: None,
             welcome_dm_enabled: None,
             welcome_dm_content: None,
+            deferred_phone_gate: None,
         }),
         integrations: None,
         media: None,

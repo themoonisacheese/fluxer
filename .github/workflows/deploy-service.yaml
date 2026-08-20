@@ -13,7 +13,6 @@ on:
           - app-proxy
           - admin
           - docs
-          - marketing
           - media-proxy
           - gateway
           - messages
@@ -152,7 +151,7 @@ jobs:
               SETS="${SETS} --set-string app.build.version=${BUILD_VERSION}"
               SETS="${SETS} --set-string app.build.channel=stable"
               ;;
-            api|app-proxy|admin|docs|marketing)
+            api|app-proxy|admin|docs)
               BASE_IMAGE="fluxer-${SERVICE}"
               if [[ "$SERVICE" == "docs" && "$CHANNEL" != "stable" ]]; then
                 echo "::error::docs deployments are stable-only."

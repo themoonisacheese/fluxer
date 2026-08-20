@@ -9813,7 +9813,6 @@
 					"DISCRIMINATOR_REQUIRED",
 					"EMAIL_SERVICE_NOT_TESTABLE",
 					"EMAIL_VERIFICATION_REQUIRED",
-					"CANARY_TESTER_EMAIL_VERIFICATION_REQUIRED",
 					"DIRECT_MESSAGE_EMAIL_VERIFICATION_REQUIRED",
 					"FRIEND_REQUEST_EMAIL_VERIFICATION_REQUIRED",
 					"GUILD_CREATION_EMAIL_VERIFICATION_REQUIRED",
@@ -12554,7 +12553,6 @@
 						"type": "object",
 						"properties": {
 							"single_community_enabled": {"type": "boolean"},
-							"single_community_locked": {"type": "boolean"},
 							"single_community_guild_id": {"nullable": true, "type": "string"},
 							"direct_messages_disabled": {"type": "boolean"},
 							"direct_messages_locked": {"type": "boolean"},
@@ -12587,11 +12585,19 @@
 								"required": ["gif", "youtube", "bluesky"]
 							},
 							"welcome_dm_enabled": {"type": "boolean"},
-							"welcome_dm_content": {"nullable": true, "type": "string"}
+							"welcome_dm_content": {"nullable": true, "type": "string"},
+							"deferred_phone_gate": {
+								"type": "object",
+								"properties": {
+									"enabled": {"type": "boolean"},
+									"window_hours": {"type": "number"},
+									"member_threshold": {"type": "number"}
+								},
+								"required": ["enabled", "window_hours", "member_threshold"]
+							}
 						},
 						"required": [
 							"single_community_enabled",
-							"single_community_locked",
 							"single_community_guild_id",
 							"direct_messages_disabled",
 							"direct_messages_locked",
@@ -12600,7 +12606,8 @@
 							"services_resolved",
 							"services_available",
 							"welcome_dm_enabled",
-							"welcome_dm_content"
+							"welcome_dm_content",
+							"deferred_phone_gate"
 						]
 					},
 					"integrations": {
@@ -13139,7 +13146,22 @@
 								}
 							},
 							"welcome_dm_enabled": {"type": "boolean"},
-							"welcome_dm_content": {"nullable": true, "type": "string", "maxLength": 4000}
+							"welcome_dm_content": {"nullable": true, "type": "string", "maxLength": 4000},
+							"deferred_phone_gate": {
+								"nullable": true,
+								"type": "object",
+								"properties": {
+									"enabled": {"type": "boolean"},
+									"window_hours": {"type": "number", "maximum": 8760, "minimum": 0, "exclusiveMinimum": true},
+									"member_threshold": {
+										"type": "integer",
+										"maximum": 1000000,
+										"format": "int32",
+										"minimum": 0,
+										"exclusiveMinimum": true
+									}
+								}
+							}
 						}
 					}
 				}
@@ -14908,6 +14930,10 @@
 					"premium_grace_ends_at": {"nullable": true, "type": "string"},
 					"premium_lifetime_sequence": {"nullable": true, "allOf": [{"$ref": "#/components/schemas/Int32Type"}]},
 					"suspicious_activity_flags": {"$ref": "#/components/schemas/SuspiciousActivityFlags"},
+					"phone_verification_deferred": {
+						"type": "boolean",
+						"description": "Whether a stored phone requirement is deferred until the user joins a discoverable or large community"
+					},
 					"temp_banned_until": {"nullable": true, "type": "string"},
 					"pending_deletion_at": {"nullable": true, "type": "string"},
 					"pending_bulk_message_deletion_at": {"nullable": true, "type": "string"},
@@ -14948,6 +14974,7 @@
 					"premium_grace_ends_at",
 					"premium_lifetime_sequence",
 					"suspicious_activity_flags",
+					"phone_verification_deferred",
 					"temp_banned_until",
 					"pending_deletion_at",
 					"pending_bulk_message_deletion_at",
