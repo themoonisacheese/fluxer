@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {BUILD_CHANNEL} from '@electron/common/BuildChannel';
+import {DESKTOP_BUILD_VARIANT} from '@electron/common/BuildVariant';
 import type {
 	AppMetricsSnapshot,
 	ClipboardWriteFileOptions,
@@ -49,6 +50,7 @@ import type {
 	SpellcheckState,
 	StreamerModeCaptureAppStatus,
 	StreamingPriorityDiagnostics,
+	SwitchInstanceUrlOptions,
 	TextareaContextMenuParams,
 	TrayActionPayload,
 	TrayRuntimeStatePayload,
@@ -357,6 +359,7 @@ applyStartupAccessibilitySettings();
 const api: ElectronAPI = {
 	platform: process.platform,
 	buildChannel: BUILD_CHANNEL,
+	buildVariant: DESKTOP_BUILD_VARIANT,
 	getDesktopInfo: (): Promise<DesktopInfo> => ipcRenderer.invoke('get-desktop-info'),
 	getGpuInfo: (): Promise<GpuInfo> => ipcRenderer.invoke('get-gpu-info'),
 	getAppMetrics: (): Promise<AppMetricsSnapshot> => ipcRenderer.invoke('get-app-metrics'),
