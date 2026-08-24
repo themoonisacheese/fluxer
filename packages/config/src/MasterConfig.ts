@@ -79,6 +79,14 @@ export interface MasterConfig {
 			static: string;
 		};
 	};
+	s3_downloads?: {
+		endpoint: string;
+		presigned_url_base?: string;
+		force_path_style?: boolean;
+		region?: string;
+		access_key_id?: string;
+		secret_access_key?: string;
+	};
 	services: {
 		api: {
 			port: number;
@@ -104,6 +112,14 @@ export interface MasterConfig {
 				task?: string;
 				enable_cron_scheduler?: boolean;
 				enable_voice_reconciliation?: boolean;
+				voice_reconciliation?: {
+					interval_ms?: number;
+					stagger_delay_ms?: number;
+					lock_ttl_seconds?: number;
+					cadence_ttl_seconds?: number;
+					gateway_only_grace_ms?: number;
+					livekit_only_grace_ms?: number;
+				};
 				lane_concurrency_overrides?: {
 					realtime?: number;
 					unfurl?: number;
