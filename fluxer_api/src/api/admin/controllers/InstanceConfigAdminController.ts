@@ -614,6 +614,7 @@ async function applyInstancePolicyUpdate(
 	}
 	if (policy.welcome_dm_content !== undefined) {
 		patch.welcome_dm_content = policy.welcome_dm_content ?? null;
+	}
 	if (policy.deferred_phone_gate) {
 		if (policy.deferred_phone_gate.enabled !== undefined) {
 			patch.deferred_phone_gate_enabled = policy.deferred_phone_gate.enabled;
