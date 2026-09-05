@@ -23,7 +23,7 @@ jobs:
   build:
     name: Build ${{ matrix.platform }} (${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
@@ -51,8 +51,35 @@ jobs:
         if: matrix.platform == 'linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libasound2-dev libdbus-1-dev libnotify-dev libxss-dev libxtst-dev libnss3-dev libsecret-1-dev librpm-dev
+          sudo apt-get install -y libgtk-3-dev libasound2-dev libdbus-1-dev libnotify-dev libxss-dev libxtst-dev libnss3-dev libsecret-1-dev librpm-dev libpipewire-0.3-dev
           sudo gem install fpm
+
+      - name: Cache cargo build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin
+            fluxer_desktop/native/webrtc-sender/target
+            fluxer_desktop/native/webauthn/target
+            fluxer_desktop/native/linux-audio-capture/target
+            fluxer_desktop/native/linux-screen-capture/target
+            fluxer_desktop/native/linux-portals/target
+            fluxer_desktop/native/linux-notifications/target
+            fluxer_desktop/native/linux-evdev/target
+            fluxer_desktop/native/linux-input-hook/target
+            fluxer_desktop/native/system-hunspell/target
+            fluxer_desktop/native/platform-info/target
+            fluxer_desktop/native/win-process-loopback/target
+            fluxer_desktop/native/win-clipboard/target
+            fluxer_desktop/native/win-shell/target
+            fluxer_desktop/native/win-toast/target
+            fluxer_desktop/native/windows-input-hook/target
+            tools/ci/target
+          key: cargo-${{ matrix.platform }}-${{ matrix.arch }}-${{ hashFiles('fluxer_desktop/native/**/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ matrix.platform }}-${{ matrix.arch }}-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -61,7 +88,7 @@ jobs:
         working-directory: fluxer_desktop
         env:
           BUILD_CHANNEL: ${{ env.BUILD_CHANNEL }}
-          FLUXER_SKIP_NATIVE: 'true'
+          ELECTRON_ARCH: ${{ matrix.arch }}
         run: node scripts/build.mjs
 
       - name: Build Electron app (Linux)
@@ -69,17 +96,17 @@ jobs:
         working-directory: fluxer_desktop
         env:
           BUILD_CHANNEL: ${{ env.BUILD_CHANNEL }}
-          FLUXER_SKIP_NATIVE: 'true'
+          ELECTRON_ARCH: ${{ matrix.arch }}
           USE_SYSTEM_FPM: 'true'
-        run: npx electron-builder --linux --${{ matrix.arch }} --config electron-builder.config.cjs
+        run: npx electron-builder --linux --config electron-builder.config.cjs
 
       - name: Build Electron app (Windows)
         if: matrix.platform == 'windows'
         working-directory: fluxer_desktop
         env:
           BUILD_CHANNEL: ${{ env.BUILD_CHANNEL }}
-          FLUXER_SKIP_NATIVE: 'true'
-        run: npx electron-builder --win --${{ matrix.arch }} --config electron-builder.config.cjs
+          ELECTRON_ARCH: ${{ matrix.arch }}
+        run: npx electron-builder --win --config electron-builder.config.cjs
 
       - name: Generate SHA256 checksums (Unix)
         if: matrix.platform != 'windows'
