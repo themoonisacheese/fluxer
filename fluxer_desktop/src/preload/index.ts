@@ -489,6 +489,10 @@ const api: ElectronAPI = {
 	): Promise<RegistrationResponseJSON> => ipcRenderer.invoke('passkey-register', options, requestContext),
 	switchInstanceUrl: (options: SwitchInstanceUrlOptions): Promise<void> =>
 		ipcRenderer.invoke('switch-instance-url', options),
+	openInstancePicker: (): Promise<void> => ipcRenderer.invoke('open-instance-picker'),
+	closeInstancePicker: (): void => {
+		ipcRenderer.send('close-instance-picker');
+	},
 	consumeDesktopHandoffCode: (): Promise<string | null> => ipcRenderer.invoke('consume-desktop-handoff-code'),
 	consumeBrowserLoginInitiation: (): Promise<boolean> => ipcRenderer.invoke('consume-browser-login-initiation'),
 	toggleDevTools: (): void => {
@@ -939,5 +943,59 @@ ipcRenderer.on('spellcheck-engine-resolved', (_event, info: SpellcheckResolvedEn
 		installSpellcheckProvider();
 	}
 });
+
+const LOGIN_INSTANCE_PICKER_BUTTON_ID = 'fluxer-login-instance-picker';
+const LOGIN_INSTANCE_PICKER_POLL_INTERVAL_MS = 500;
+
+function isLoginRoute(pathname: string): boolean {
+	return pathname === '/login' || pathname.startsWith('/login/');
+}
+
+function pageProvidesInstanceSelector(): boolean {
+	return document.querySelector('[data-flx*="instance-selector"]') !== null;
+}
+
+function removeLoginInstancePickerButton(): void {
+	document.getElementById(LOGIN_INSTANCE_PICKER_BUTTON_ID)?.remove();
+}
+
+function installLoginInstancePickerButton(): void {
+	if (isLoginRoute(window.location.pathname) && !pageProvidesInstanceSelector() && document.body) {
+		if (document.getElementById(LOGIN_INSTANCE_PICKER_BUTTON_ID)) {
+			return;
+		}
+		const button = document.createElement('button');
+		button.id = LOGIN_INSTANCE_PICKER_BUTTON_ID;
+		button.type = 'button';
+		button.textContent = 'Use a different instance';
+		button.setAttribute('data-native-desktop-control', 'instance-picker');
+		Object.assign(button.style, {
+			position: 'fixed',
+			bottom: '16px',
+			left: '50%',
+			transform: 'translateX(-50%)',
+			zIndex: '2147483647',
+			padding: '8px 16px',
+			border: 'none',
+			borderRadius: '8px',
+			background: '#1e1f22',
+			color: '#dbdee1',
+			fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+			fontSize: '13px',
+			fontWeight: '500',
+			cursor: 'pointer',
+			boxShadow: '0 4px 12px rgba(0, 0, 0, 0.35)',
+		});
+		button.addEventListener('click', () => {
+			ipcRenderer.invoke('open-instance-picker').catch(() => {});
+		});
+		document.body.appendChild(button);
+		return;
+	}
+	removeLoginInstancePickerButton();
+}
+
+document.addEventListener('DOMContentLoaded', installLoginInstancePickerButton, {once: true});
+setInterval(installLoginInstancePickerButton, LOGIN_INSTANCE_PICKER_POLL_INTERVAL_MS);
 
 contextBridge.exposeInMainWorld('electron', api);
