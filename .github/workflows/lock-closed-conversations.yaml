@@ -19,8 +19,6 @@ on:
       - unanswered
       - unlabeled
       - unpinned
-  schedule:
-    - cron: "17 4 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
