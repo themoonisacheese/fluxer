@@ -23,6 +23,7 @@ import {
 	updateTrayRuntimeState,
 } from '@electron/main/DesktopTray';
 import {downloadFile} from '@electron/main/FileDownloads';
+import {registerInstancePickerIpcHandlers} from '@electron/main/InstancePicker';
 import {
 	type LinuxAppearanceSnapshot,
 	type LinuxAppearanceSubscription,
@@ -236,6 +237,7 @@ async function assertValidFluxerInstance(instanceOrigin: string): Promise<void> 
 export function registerIpcHandlers(): void {
 	registerVoiceDebugEventSinkPopoutIpcHandlers();
 	registerVoiceBackgroundMediaCacheHandlers();
+	registerInstancePickerIpcHandlers();
 	ipcMain.handle('switch-instance-url', async (_event, options: SwitchInstanceUrlOptions): Promise<void> => {
 		const instanceOrigin = normalizeInstanceOrigin(options.instanceUrl);
 		await assertValidFluxerInstance(instanceOrigin);

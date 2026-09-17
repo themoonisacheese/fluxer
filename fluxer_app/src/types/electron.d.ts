@@ -495,6 +495,8 @@ export interface ElectronAPI {
 		desktopHandoffCode?: string | null;
 		initiateBrowserLogin?: boolean;
 	}): Promise<void>;
+	openInstancePicker?(): Promise<void>;
+	closeInstancePicker?(): void;
 	consumeDesktopHandoffCode?(): Promise<string | null>;
 	consumeBrowserLoginInitiation?(): Promise<boolean>;
 	getOpenH264Status?(): Promise<OpenH264Status>;

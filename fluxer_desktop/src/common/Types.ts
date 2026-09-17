@@ -786,6 +786,8 @@ export interface ElectronAPI {
 	passkeyAuthenticate: (options: PublicKeyCredentialRequestOptionsJSON) => Promise<AuthenticationResponseJSON>;
 	passkeyRegister: (options: PublicKeyCredentialCreationOptionsJSON) => Promise<RegistrationResponseJSON>;
 	switchInstanceUrl: (options: SwitchInstanceUrlOptions) => Promise<void>;
+	openInstancePicker: () => Promise<void>;
+	closeInstancePicker: () => void;
 	consumeDesktopHandoffCode: () => Promise<string | null>;
 	consumeBrowserLoginInitiation: () => Promise<boolean>;
 	virtmic: VirtmicApi;

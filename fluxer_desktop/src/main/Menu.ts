@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {BUILD_CHANNEL} from '@electron/common/BuildChannel';
+import {openInstancePickerWindow} from '@electron/main/InstancePicker';
 import {onLocaleChange, t} from '@electron/main/MainI18n';
 import {openExternalDeduped} from '@electron/main/OpenExternal';
 import {buildTroubleshootingMenuItems} from '@electron/main/Troubleshooting';
@@ -53,7 +54,16 @@ function buildTemplate(): Array<MenuItemConstructorOptions> {
 	template.push({
 		label: t('desktop.appMenu.file'),
 		submenu: isMac
-			? [{role: 'close'}]
+			? [
+					{
+						label: t('desktop.appMenu.connectInstance'),
+						click: () => {
+							openInstancePickerWindow();
+						},
+					},
+					{type: 'separator'},
+					{role: 'close'},
+				]
 			: [
 					{
 						label: t('desktop.appMenu.preferencesPlain'),
@@ -63,6 +73,12 @@ function buildTemplate(): Array<MenuItemConstructorOptions> {
 							if (mainWindow) {
 								mainWindow.webContents.send('open-settings');
 							}
+						},
+					},
+					{
+						label: t('desktop.appMenu.connectInstance'),
+						click: () => {
+							openInstancePickerWindow();
 						},
 					},
 					{type: 'separator'},
