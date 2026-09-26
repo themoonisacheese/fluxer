@@ -2,6 +2,7 @@
 
 import {BUILD_CHANNEL} from '@electron/common/BuildChannel';
 import {DESKTOP_BUILD_VARIANT} from '@electron/common/BuildVariant';
+import {nativeVoiceEngineFileName} from '@electron/common/NativeArtifactName';
 import type {
 	AppMetricsSnapshot,
 	ClipboardWriteFileOptions,
@@ -839,11 +840,11 @@ const api: ElectronAPI = {
 
 let nativeVoiceEngineAvailable = false;
 try {
-	const nativeFileName = `webrtc-sender.${process.platform}-${process.arch}-gnu.node`;
+	const nativeFileName = nativeVoiceEngineFileName(process.platform, process.arch);
 	const moduleRoot = join(__dirname, '..', '..', 'node_modules', '@fluxer', 'webrtc-sender');
 	const asarPath = join(moduleRoot, nativeFileName);
 	const unpackedPath = asarPath.replace('app.asar', 'app.asar.unpacked');
-	nativeVoiceEngineAvailable = existsSync(asarPath) || existsSync(unpackedPath);
+	nativeVoiceEngineAvailable = nativeFileName.length > 0 && (existsSync(asarPath) || existsSync(unpackedPath));
 } catch {
 	nativeVoiceEngineAvailable = false;
 }

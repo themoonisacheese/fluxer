@@ -196,7 +196,8 @@ function commandPlan() {
 	const commands = [
 		{
 			name: 'main-process-native-media-unit-tests',
-			command: 'node --test src/main/NativeVoiceEngine.test.mjs src/main/NativeScreenCapture.test.mjs',
+			command:
+				'node --test src/main/NativeVoiceEngine.test.mjs src/main/NativeScreenCapture.test.mjs src/common/NativeArtifactName.test.mjs',
 			category: 'shared',
 		},
 		{name: 'desktop-typecheck', command: `${packageManager} typecheck`, category: 'shared'},

@@ -2,8 +2,10 @@
 
 use std::ffi::OsString;
 use std::os::windows::ffi::OsStrExt;
+use std::sync::OnceLock;
 
 use napi::Result;
+use windows::core::w;
 use windows::Win32::Foundation::{HWND, LPARAM};
 use windows::Win32::Networking::WindowsWebServices::{
     WEBAUTHN_AUTHENTICATOR_ATTACHMENT_CROSS_PLATFORM, WEBAUTHN_AUTHENTICATOR_ATTACHMENT_PLATFORM,
@@ -21,6 +23,7 @@ use windows::Win32::Networking::WindowsWebServices::{
     WebAuthNAuthenticatorMakeCredential, WebAuthNFreeAssertion, WebAuthNFreeCredentialAttestation,
     WebAuthNGetApiVersionNumber, WebAuthNIsUserVerifyingPlatformAuthenticatorAvailable,
 };
+use windows::Win32::System::LibraryLoader::LoadLibraryW;
 use windows::Win32::System::Threading::GetCurrentProcessId;
 use windows::Win32::UI::WindowsAndMessaging::{
     EnumWindows, GetDesktopWindow, GetForegroundWindow, GetWindowThreadProcessId, IsWindow,
@@ -33,11 +36,22 @@ use crate::common::{
     ceremony_error,
 };
 
+fn webauthn_dll_available() -> bool {
+    static AVAILABLE: OnceLock<bool> = OnceLock::new();
+    *AVAILABLE.get_or_init(|| unsafe { LoadLibraryW(w!("webauthn.dll")).is_ok() })
+}
+
 pub fn api_version() -> u32 {
+    if !webauthn_dll_available() {
+        return 0;
+    }
     unsafe { WebAuthNGetApiVersionNumber() }
 }
 
 pub fn is_user_verifying_platform_authenticator_available() -> bool {
+    if !webauthn_dll_available() {
+        return false;
+    }
     match unsafe { WebAuthNIsUserVerifyingPlatformAuthenticatorAvailable() } {
         Ok(b) => b.as_bool(),
         Err(_) => false,
@@ -143,6 +157,9 @@ fn copy_buffer(ptr: *const u8, len: u32) -> Result<Vec<u8>> {
 }
 
 pub fn make_credential(input: &mut CreateInput) -> Result<CreateResult> {
+    if !webauthn_dll_available() {
+        return Err(ceremony_error(CREATE_PREFIX, "WebAuthnUnavailable"));
+    }
     let rp_id_w = to_wide(&input.rp_id);
     let rp_name_w = to_wide(&input.rp_name);
     let user_name_w = to_wide(&input.user_name);
@@ -237,6 +254,9 @@ pub fn make_credential(input: &mut CreateInput) -> Result<CreateResult> {
 }
 
 pub fn get_assertion(input: &mut GetInput) -> Result<GetResult> {
+    if !webauthn_dll_available() {
+        return Err(ceremony_error(GET_PREFIX, "WebAuthnUnavailable"));
+    }
     let rp_id_w = to_wide(&input.rp_id);
 
     let client_data = WEBAUTHN_CLIENT_DATA {
